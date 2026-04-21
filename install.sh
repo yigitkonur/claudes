@@ -73,19 +73,23 @@ if [ ! -f "$USER_PRESETS" ]; then
 # Define your own Claude Code presets here. This file is sourced after the
 # built-in defaults, so you can override any built-in or add new ones.
 #
-# Keys used:
-#   CLAUDES_PRESETS[name]="<claude CLI flags>"
+# Registries (all optional except CLAUDES_PRESETS):
+#   CLAUDES_PRESETS[name]="<claude CLI flags>"  # or  "fn:<zsh_function>"
 #   CLAUDES_DESCRIPTIONS[name]="one-line description"
 #   CLAUDES_ALIASES[short]=name
+#   CLAUDES_ENV[name]="KEY=val KEY2=val2"        # exported before launch
+#   CLAUDES_MCP[name]="$HOME/.config/claudes/mcp/foo.json"  # --mcp-config
+#   CLAUDES_PROMPT[name]="..."                   # --append-system-prompt
 #
 # Example — uncomment and customize:
 #
-# CLAUDES_PRESETS[haiku]="--model haiku --effort low --permission-mode default"
-# CLAUDES_DESCRIPTIONS[haiku]="Haiku 4.5 · low · near-instant, ultra-cheap"
-# CLAUDES_ALIASES[h]=haiku
+# CLAUDES_PRESETS[review]="--model sonnet --effort low --tools Read,Grep,Glob,Bash"
+# CLAUDES_DESCRIPTIONS[review]="Sonnet · low · read-only PR/code review"
+# CLAUDES_ALIASES[rv]=review
+# CLAUDES_PROMPT[review]="You are in read-only review mode. Do not edit files."
 #
-# See more examples:
-#   https://github.com/yigitkonur/claudes/blob/main/examples/custom-presets.zsh
+# Ready-to-copy recipes (review, cheap, ci, offline, audit, worktree, pr, ...):
+#   https://github.com/yigitkonur/claudes/tree/main/examples
 EOF
   ok "Example user-config at $USER_PRESETS"
 fi
