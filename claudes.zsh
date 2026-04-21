@@ -1,19 +1,25 @@
 # ╔══════════════════════════════════════════════════════════════════╗
 # ║  claudes — Claude Code preset picker for zsh                    ║
 # ║                                                                  ║
-# ║  Switch between Claude Code model/effort/mode combinations      ║
-# ║  with a single command. Ship sensible defaults, extend with     ║
-# ║  your own presets via ~/.config/claudes/presets.zsh             ║
+# ║  Switch between Claude Code model/effort/mode combinations,     ║
+# ║  MCP sets, system prompts, tool subsets, and env vars with      ║
+# ║  a single command. Sensible defaults, extend with your own.     ║
 # ║                                                                  ║
 # ║  https://github.com/yigitkonur/claudes                          ║
 # ╚══════════════════════════════════════════════════════════════════╝
 
-# ============ DEFAULT PRESETS ============
-# Users can override any of these in ~/.config/claudes/presets.zsh
-typeset -gA CLAUDES_PRESETS
-typeset -gA CLAUDES_DESCRIPTIONS
-typeset -gA CLAUDES_ALIASES
+# ============ PRESET REGISTRIES ============
+# All registries are zsh associative arrays. All are optional except
+# CLAUDES_PRESETS itself. Missing keys are no-ops.
+typeset -gA CLAUDES_PRESETS        # preset → CLI flag string, OR "fn:<func_name>"
+typeset -gA CLAUDES_DESCRIPTIONS   # preset → one-line human description
+typeset -gA CLAUDES_ALIASES        # short → preset
+typeset -gA CLAUDES_ENV            # preset → "KEY=val KEY2=val2" (space-separated)
+typeset -gA CLAUDES_MCP            # preset → path to --mcp-config JSON file
+typeset -gA CLAUDES_PROMPT         # preset → string appended via --append-system-prompt
 
+# ============ DEFAULT PRESETS ============
+# Four built-ins, intentionally minimal. Add more in ~/.config/claudes/presets.zsh.
 CLAUDES_PRESETS[standard]="--model sonnet --effort max --permission-mode default"
 CLAUDES_DESCRIPTIONS[standard]="Sonnet 4.6 · max effort · daily coding work"
 CLAUDES_ALIASES[s]=standard
@@ -31,13 +37,8 @@ CLAUDES_DESCRIPTIONS[research]="Opus 4.7 · max effort · direct · explore/revi
 CLAUDES_ALIASES[r]=research
 
 # ============ USER OVERRIDES / CUSTOM PRESETS ============
-# Drop your own presets into ~/.config/claudes/presets.zsh
-#
-# Example:
-#   CLAUDES_PRESETS[haiku]="--model haiku --effort low"
-#   CLAUDES_DESCRIPTIONS[haiku]="Haiku 4.5 · low · ultra-cheap"
-#   CLAUDES_ALIASES[h]=haiku
-#
+# Drop your own presets into ~/.config/claudes/presets.zsh.
+# See the examples/ directory in the repo for ready-to-copy recipes.
 _claudes_user_config="${XDG_CONFIG_HOME:-$HOME/.config}/claudes/presets.zsh"
 [[ -f "$_claudes_user_config" ]] && source "$_claudes_user_config"
 unset _claudes_user_config
@@ -55,6 +56,18 @@ _claudes_resolve() {
   return 1
 }
 
+_claudes_markers() {
+  # Compact marker suffix showing which extras a preset carries.
+  # E.g. "+mcp +prompt" or "fn" for a function-form preset.
+  local key="$1"
+  local -a marks=()
+  [[ "${CLAUDES_PRESETS[$key]-}" == fn:* ]] && marks+=(fn)
+  [[ -n "${CLAUDES_ENV[$key]-}"    ]] && marks+=(+env)
+  [[ -n "${CLAUDES_MCP[$key]-}"    ]] && marks+=(+mcp)
+  [[ -n "${CLAUDES_PROMPT[$key]-}" ]] && marks+=(+prompt)
+  (( ${#marks[@]} )) && echo " [${marks[*]}]"
+}
+
 _claudes_print_presets() {
   # Print numbered list of presets (sorted by key).
   local -A _rev
@@ -63,11 +76,12 @@ _claudes_print_presets() {
     _rev[${CLAUDES_ALIASES[$_ak]}]="$_ak"
   done
 
-  local i=1 key alias_char
+  local i=1 key alias_char marker_str
   for key in ${(ko)CLAUDES_PRESETS}; do
     alias_char=""
     [[ -n "${_rev[$key]-}" ]] && alias_char=" (${_rev[$key]})"
-    printf "    %d) %-14s · %s\n" "$i" "$key$alias_char" "${CLAUDES_DESCRIPTIONS[$key]}"
+    marker_str=$(_claudes_markers "$key")
+    printf "    %d) %-18s · %s%s\n" "$i" "$key$alias_char" "${CLAUDES_DESCRIPTIONS[$key]}" "$marker_str"
     ((i++))
   done
 }
@@ -81,6 +95,12 @@ _claudes_key_by_index() {
     ((i++))
   done
   return 1
+}
+
+_claudes_expand_tilde() {
+  # Expand leading ~ in paths (since assoc array values are not auto-expanded).
+  local p="$1"
+  echo "${p/#\~/$HOME}"
 }
 
 # ============ MAIN FUNCTION ============
@@ -105,7 +125,6 @@ function claudes() {
     if [[ -z "$choice" ]]; then
       echo "cancelled"; return 0
     fi
-    # Numeric choice → resolve to key
     if [[ "$choice" =~ ^[0-9]+$ ]]; then
       local resolved
       resolved=$(_claudes_key_by_index "$choice") || { echo "invalid: $choice" >&2; return 1; }
@@ -125,6 +144,7 @@ USAGE
   claudes                       Interactive picker
   claudes <preset> [args...]    Run a specific preset
   claudes list                  List all presets
+  claudes show <preset>         Show resolved config for a preset
   claudes help                  Show this help
 
 BUILT-IN PRESETS
@@ -132,20 +152,42 @@ EOF
       _claudes_print_presets
       cat <<'EOF'
 
+PRESET MARKERS (shown in list/picker)
+  [fn]      preset is a zsh function (full flexibility)
+  [+env]    preset exports extra env vars before launch
+  [+mcp]    preset loads its own MCP server set (--mcp-config)
+  [+prompt] preset appends a system prompt (--append-system-prompt)
+
 EXAMPLES
   claudes                       Pick from menu
   claudes standard              Sonnet 4.6 · max · default mode
   claudes s "fix the bug"       Alias + prompt
   claudes plan --resume         Plan mode + resume last session
+  claudes show research         Dry-run print of resolved command
 
 CUSTOM PRESETS
   Edit ~/.config/claudes/presets.zsh:
-    CLAUDES_PRESETS[mine]="--model sonnet --effort high"
-    CLAUDES_DESCRIPTIONS[mine]="my custom preset"
-    CLAUDES_ALIASES[m]=mine
+
+  # Simple flag-string preset
+  CLAUDES_PRESETS[mine]="--model sonnet --effort high"
+  CLAUDES_DESCRIPTIONS[mine]="my custom preset"
+  CLAUDES_ALIASES[m]=mine
+
+  # Preset with MCP + system prompt + env var
+  CLAUDES_PRESETS[review]="--model sonnet --effort low --tools Read,Grep,Glob,Bash"
+  CLAUDES_DESCRIPTIONS[review]="read-only review mode"
+  CLAUDES_MCP[review]="$HOME/.config/claudes/mcp/research-only.json"
+  CLAUDES_PROMPT[review]="You are in read-only review mode. Do not edit files."
+  CLAUDES_ENV[review]="CLAUDE_CODE_MAX_OUTPUT_TOKENS=16000"
+
+  # Function-form preset (full zsh power)
+  _my_worktree() { command claude -w "${1:-feat-$(date +%s)}" --tmux --model opus --effort max "${@:2}"; }
+  CLAUDES_PRESETS[wt]="fn:_my_worktree"
+  CLAUDES_DESCRIPTIONS[wt]="Opus · max · spawn worktree + tmux"
 
 MORE
   https://github.com/yigitkonur/claudes
+  Ready-to-copy recipes: examples/ directory in the repo
 EOF
       return 0
       ;;
@@ -153,6 +195,21 @@ EOF
       echo ""
       _claudes_print_presets
       echo ""
+      return 0
+      ;;
+    show)
+      local target="${rest[1]:-}"
+      if [[ -z "$target" ]]; then
+        echo "usage: claudes show <preset>" >&2; return 1
+      fi
+      local r
+      r=$(_claudes_resolve "$target") || { echo "unknown preset: $target" >&2; return 1; }
+      echo "preset:       $r"
+      echo "description:  ${CLAUDES_DESCRIPTIONS[$r]}"
+      echo "flags:        ${CLAUDES_PRESETS[$r]}"
+      [[ -n "${CLAUDES_ENV[$r]-}"    ]] && echo "env:          ${CLAUDES_ENV[$r]}"
+      [[ -n "${CLAUDES_MCP[$r]-}"    ]] && echo "mcp-config:   ${CLAUDES_MCP[$r]}"
+      [[ -n "${CLAUDES_PROMPT[$r]-}" ]] && echo "prompt:       ${CLAUDES_PROMPT[$r]}"
       return 0
       ;;
   esac
@@ -167,7 +224,52 @@ EOF
   local flags="${CLAUDES_PRESETS[$resolved]}"
   local desc="${CLAUDES_DESCRIPTIONS[$resolved]}"
 
+  # ── Function-form preset (fn:<name>) ─────────────────────────────────
+  # Full escape hatch: user-defined zsh function gets called with rest args.
+  # CLAUDES_ENV still applies; MCP and PROMPT are ignored (the function owns those).
+  if [[ "$flags" == fn:* ]]; then
+    local fn_name="${flags#fn:}"
+    if ! typeset -f "$fn_name" > /dev/null 2>&1; then
+      echo "claudes: preset function '$fn_name' is not defined" >&2
+      return 1
+    fi
+    echo "▶ ${resolved} · ${desc}"
+    if [[ -n "${CLAUDES_ENV[$resolved]-}" ]]; then
+      # Subshell so env exports don't leak to the calling shell.
+      (
+        local _p
+        for _p in ${=CLAUDES_ENV[$resolved]}; do export "$_p"; done
+        "$fn_name" "${rest[@]}"
+      )
+    else
+      "$fn_name" "${rest[@]}"
+    fi
+    return $?
+  fi
+
+  # ── Flag-string preset ───────────────────────────────────────────────
+  local -a extra_flags=()
+
+  if [[ -n "${CLAUDES_MCP[$resolved]-}" ]]; then
+    local mcp_path
+    mcp_path=$(_claudes_expand_tilde "${CLAUDES_MCP[$resolved]}")
+    if [[ ! -f "$mcp_path" ]]; then
+      echo "claudes: MCP config not found for '$resolved': $mcp_path" >&2
+      return 1
+    fi
+    extra_flags+=(--mcp-config "$mcp_path")
+  fi
+
+  if [[ -n "${CLAUDES_PROMPT[$resolved]-}" ]]; then
+    extra_flags+=(--append-system-prompt "${CLAUDES_PROMPT[$resolved]}")
+  fi
+
+  local -a env_prefix=()
+  if [[ -n "${CLAUDES_ENV[$resolved]-}" ]]; then
+    env_prefix=(env ${=CLAUDES_ENV[$resolved]})
+  fi
+
   echo "▶ ${resolved} · ${desc}"
-  # shellcheck disable=SC2086  # intentional word-splitting on flags
-  command claude ${=flags} "${rest[@]}"
+  # shellcheck disable=SC2086  # intentional word-splitting on $flags
+  "${env_prefix[@]}" command claude ${=flags} "${extra_flags[@]}" "${rest[@]}"
 }

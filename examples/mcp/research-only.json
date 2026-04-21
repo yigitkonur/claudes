@@ -1,0 +1,9 @@
+{
+  "_comment": "Template for a strict-MCP research preset. Edit the URLs/commands below to point at your own MCP servers. Used by examples/research-mcp.zsh. Drop this file at ~/.config/claudes/mcp/research-only.json.",
+  "mcpServers": {
+    "research-powerpack": {
+      "type": "http",
+      "url": "https://research.yigitkonur.com/mcp"
+    }
+  }
+}
