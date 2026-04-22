@@ -259,16 +259,17 @@ EOF
       ;;
   esac
 
+  # Resolve the claude binary once via PATH, bypassing the `claude` shell function
+  # that the Warp remap installs (which would recurse back here).
+  local _claude_bin
+  _claude_bin=$(whence -p claude 2>/dev/null)
+  if [[ -z "$_claude_bin" ]]; then
+    echo "claudes: claude binary not found in PATH" >&2
+    return 127
+  fi
+
   # Pass-through: if the first arg looks like a flag, forward everything to claude directly.
-  # Use `whence -p` to resolve the claude binary by PATH, bypassing the `claude` shell
-  # function that the Warp remap installs (which would recurse back here).
   if [[ "$preset" == -* ]]; then
-    local _claude_bin
-    _claude_bin=$(whence -p claude 2>/dev/null)
-    if [[ -z "$_claude_bin" ]]; then
-      echo "claudes: claude binary not found in PATH" >&2
-      return 127
-    fi
     "$_claude_bin" "$preset" "${rest[@]}"
     return $?
   fi
@@ -330,5 +331,5 @@ EOF
 
   echo "▶ ${resolved} · ${desc}"
   # shellcheck disable=SC2086  # intentional word-splitting on $flags
-  "${env_prefix[@]}" command claude ${=flags} "${extra_flags[@]}" "${rest[@]}"
+  "${env_prefix[@]}" "$_claude_bin" ${=flags} "${extra_flags[@]}" "${rest[@]}"
 }
