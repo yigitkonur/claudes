@@ -1,6 +1,6 @@
 # claudes
 
-> one command, everything you need to swap between claude code configs. model, effort, permission mode, mcp servers, system prompts, env vars — all in a named preset. zero deps beyond zsh and the [claude code](https://claude.com/claude-code) cli.
+> one command, everything you need to swap between claude code configs. model, effort, permission mode, mcp servers, system prompts, env vars — all in a named preset. config lives in a single yaml file. zero deps beyond zsh, python3, and the [claude code](https://claude.com/claude-code) cli.
 
 [![shell](https://img.shields.io/badge/shell-zsh-89e051?style=flat-square)](https://www.zsh.org/)
 [![claude code](https://img.shields.io/badge/claude_code-compatible-f97316?style=flat-square)](https://claude.com/claude-code)
@@ -108,6 +108,8 @@ claudes show research     # dry-run: print resolved flags without launching
 claudes config            # interactive preset & ux manager
 claudes config presets    # manage presets only
 claudes config ux         # order, default preset, remap settings
+claudes test              # run test suite (parse + dry-run)
+CLAUDES_RUN_LIVE=1 claudes test  # same + fire a real claude request
 claudes help              # full help
 ```
 
@@ -190,33 +192,36 @@ CLAUDES_PROMPT[review]="You are in read-only review mode. Do not edit files."
 
 ## custom presets — how to add your own
 
-edit `~/.config/claudes/presets.zsh`. sourced after the built-ins, so your entries override them.
+edit `~/.config/claudes/claudes.yaml`. one file for everything — presets, picker order, default, remap.
 
 a minimum viable preset:
 
-```zsh
-CLAUDES_PRESETS[mine]="--model sonnet --effort high"
-CLAUDES_DESCRIPTIONS[mine]="Sonnet · high · my daily driver"
-CLAUDES_ALIASES[m]=mine
+```yaml
+presets:
+  mine:
+    flags: "--model sonnet --effort high"
+    description: "Sonnet · high · my daily driver"
+    alias: m
 ```
 
-a richer one:
+a richer one with all the extras:
 
-```zsh
-# grounded research — opus, strict mcp, anti-fabrication prompt, bigger output budget
-CLAUDES_PRESETS[rmcp]="--model opus --effort max --strict-mcp-config"
-CLAUDES_DESCRIPTIONS[rmcp]="Opus · max · strict research mcp"
-CLAUDES_ALIASES[rm]=rmcp
-CLAUDES_MCP[rmcp]="$HOME/.config/claudes/mcp/research-only.json"
-CLAUDES_PROMPT[rmcp]="Cite every non-trivial claim from a scraped source. No fabrication."
-CLAUDES_ENV[rmcp]="CLAUDE_CODE_MAX_OUTPUT_TOKENS=32000"
+```yaml
+presets:
+  rmcp:
+    flags: "--model opus --effort max --strict-mcp-config"
+    description: "Opus · max · strict research mcp"
+    alias: rm
+    mcp: "~/.config/claudes/mcp/research-only.json"
+    prompt: "Cite every non-trivial claim from a scraped source. No fabrication."
+    env:
+      CLAUDE_CODE_MAX_OUTPUT_TOKENS: "32000"
 ```
 
-to remove a built-in you don't want:
+to remove a built-in preset you don't want:
 
-```zsh
-unset 'CLAUDES_PRESETS[research]'
-unset 'CLAUDES_DESCRIPTIONS[research]'
+```yaml
+remove_builtins: [research]
 ```
 
 to see what a preset resolves to without launching:
@@ -230,13 +235,15 @@ claudes show rmcp
 # env:          CLAUDE_CODE_MAX_OUTPUT_TOKENS=32000
 ```
 
-**interactive manager** — instead of editing the file by hand, run `claudes config presets`. it'll walk you through model/effort/mode, generate the flags, and write the entry for you.
+**interactive manager** — instead of editing yaml by hand, run `claudes config presets`. it'll walk you through model/effort/mode, generate the flags, and write the entry for you.
+
+**verify everything works** — `claudes test` runs the full pipeline: YAML parse → cache → zsh sourcing → preset resolution. add `CLAUDES_RUN_LIVE=1` to fire a real 2-cent request too.
 
 ---
 
 ## example presets to steal
 
-the [`examples/`](examples/) folder has eight ready-to-copy presets. copy the block you want into `~/.config/claudes/presets.zsh` — or let `claudes config presets` do it via the guided wizard.
+the [`examples/`](examples/) folder has eight ready-to-copy presets. copy the yaml block you want into `~/.config/claudes/claudes.yaml` under the `presets:` key — or run `claudes config presets` for the guided wizard.
 
 | file | preset | what it does |
 |---|---|---|
@@ -396,6 +403,7 @@ assign: `CLAUDES_PRESETS[foo]="..."` — unset: `unset 'CLAUDES_PRESETS[foo]'`
 | `claudes config` | interactive preset & ux manager |
 | `claudes config presets` | manage presets (add/edit/remove) |
 | `claudes config ux` | set order, default preset, remap |
+| `claudes test` | run test suite (yaml parse + dry-run + optional live) |
 | `claudes help` | full help text |
 
 ### markers (picker + list)
@@ -413,10 +421,12 @@ assign: `CLAUDES_PRESETS[foo]="..."` — unset: `unset 'CLAUDES_PRESETS[foo]'`
 |---|---|
 | `~/.local/share/claudes/claudes.zsh` | the main function |
 | `~/.local/share/claudes/ux.zsh` | ux layer (optional, installed by installer) |
+| `~/.local/share/claudes/yaml2sh.py` | yaml → zsh converter (called at shell startup, cached) |
 | `~/.local/share/claudes/configure.sh` | preset manager, called by `claudes config` |
-| `~/.config/claudes/presets.zsh` | your custom presets |
-| `~/.config/claudes/ux-settings.zsh` | ux config (order, default, remap) |
-| `~/.config/claudes/mcp/` | convention: mcp json files for `CLAUDES_MCP[...]` |
+| `~/.local/share/claudes/test.sh` | test suite, called by `claudes test` |
+| `~/.config/claudes/claudes.yaml` | **your config** — presets + ux settings |
+| `~/.config/claudes/.claudes-cache.zsh` | generated cache (auto-regenerated when yaml changes) |
+| `~/.config/claudes/mcp/` | convention: mcp json files for `mcp:` preset key |
 | `~/.zshrc.d/90-claudes.zsh` | symlink → claudes.zsh (if `~/.zshrc.d/` exists) |
 | `~/.zshrc.d/91-claudes-ux.zsh` | symlink → ux.zsh (if ux layer installed) |
 
@@ -425,6 +435,7 @@ assign: `CLAUDES_PRESETS[foo]="..."` — unset: `unset 'CLAUDES_PRESETS[foo]'`
 ## requirements
 
 - **zsh 5.0+** — uses associative arrays and zsh-specific parameter expansion
+- **python3** — converts `claudes.yaml` to a zsh-sourceable cache at shell startup (already installed on macOS and most Linux distros). `pyyaml` is used if available; falls back to a built-in parser for the claudes subset if not.
 - **claude code cli 2.1+** — `npm install -g @anthropic-ai/claude-code`
 - macOS or Linux
 

@@ -37,11 +37,24 @@ CLAUDES_DESCRIPTIONS[research]="Opus 4.7 · max effort · direct · explore/revi
 CLAUDES_ALIASES[r]=research
 
 # ============ USER OVERRIDES / CUSTOM PRESETS ============
-# Drop your own presets into ~/.config/claudes/presets.zsh.
-# See the examples/ directory in the repo for ready-to-copy recipes.
-_claudes_user_config="${XDG_CONFIG_HOME:-$HOME/.config}/claudes/presets.zsh"
-[[ -f "$_claudes_user_config" ]] && source "$_claudes_user_config"
-unset _claudes_user_config
+# Edit ~/.config/claudes/claudes.yaml  (or run: claudes config)
+# yaml2sh.py converts it to a .zsh cache that is sourced here.
+_claudes_load_yaml() {
+  local _yaml="${XDG_CONFIG_HOME:-$HOME/.config}/claudes/claudes.yaml"
+  local _cache="${XDG_CONFIG_HOME:-$HOME/.config}/claudes/.claudes-cache.zsh"
+  local _y2sh="$HOME/.local/share/claudes/yaml2sh.py"
+  [[ -f "$_yaml" ]]  || return 0
+  [[ -f "$_y2sh" ]]  || return 0
+  if [[ ! -f "$_cache" || "$_yaml" -nt "$_cache" ]]; then
+    python3 "$_y2sh" "$_yaml" > "$_cache" || {
+      echo "claudes: YAML parse failed — run: claudes config" >&2
+      return 1
+    }
+  fi
+  source "$_cache"
+}
+_claudes_load_yaml
+unfunction _claudes_load_yaml
 
 # ============ INTERNAL HELPERS ============
 _claudes_resolve() {
@@ -154,6 +167,7 @@ USAGE
   claudes list                  List all presets
   claudes show <preset>         Show resolved config for a preset
   claudes config [presets|ux]   Interactive preset & UX manager
+  claudes test                  Run test suite (parse + dry-run + optional live)
   claudes help                  Show this help
 
 BUILT-IN PRESETS
@@ -205,6 +219,17 @@ EOF
       _claudes_print_presets
       echo ""
       return 0
+      ;;
+    test)
+      local _test_script="${HOME}/.local/share/claudes/test.sh"
+      if [[ -f "$_test_script" ]]; then
+        bash "$_test_script" "${rest[@]}"
+      else
+        echo "claudes test: test.sh not found at $_test_script" >&2
+        echo "  Re-run installer: curl -fsSL https://raw.githubusercontent.com/yigitkonur/claudes/main/install.sh | bash" >&2
+        return 1
+      fi
+      return $?
       ;;
     config)
       local _cfg_script="${HOME}/.local/share/claudes/configure.sh"

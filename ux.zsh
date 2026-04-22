@@ -18,10 +18,19 @@ typeset -ga CLAUDES_ORDER        # empty = alphabetical fallback
 : ${CLAUDES_DEFAULT:=standard}   # Enter-key preset
 : ${CLAUDES_REMAP_CLAUDE:=warp}  # warp | all | none
 
-# ── User UX settings ──────────────────────────────────────────────────────
-_claudes_ux_cfg="${XDG_CONFIG_HOME:-$HOME/.config}/claudes/ux-settings.zsh"
-[[ -f "$_claudes_ux_cfg" ]] && source "$_claudes_ux_cfg"
-unset _claudes_ux_cfg
+# ── User UX settings (from shared YAML cache) ─────────────────────────────
+# claudes.zsh (90-) already generated ~/.config/claudes/.claudes-cache.zsh.
+# Source it here for CLAUDES_ORDER / DEFAULT / REMAP; it's a cache-hit no-op.
+_claudes_ux_cache="${XDG_CONFIG_HOME:-$HOME/.config}/claudes/.claudes-cache.zsh"
+_claudes_ux_yaml="${XDG_CONFIG_HOME:-$HOME/.config}/claudes/claudes.yaml"
+_claudes_ux_y2sh="$HOME/.local/share/claudes/yaml2sh.py"
+if [[ -f "$_claudes_ux_yaml" && -f "$_claudes_ux_y2sh" ]]; then
+  if [[ ! -f "$_claudes_ux_cache" || "$_claudes_ux_yaml" -nt "$_claudes_ux_cache" ]]; then
+    python3 "$_claudes_ux_y2sh" "$_claudes_ux_yaml" > "$_claudes_ux_cache" 2>/dev/null
+  fi
+  [[ -f "$_claudes_ux_cache" ]] && source "$_claudes_ux_cache"
+fi
+unset _claudes_ux_cache _claudes_ux_yaml _claudes_ux_y2sh
 
 # ── Override _claudes_print_presets to respect CLAUDES_ORDER ─────────────
 _claudes_print_presets() {
