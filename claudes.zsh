@@ -259,6 +259,12 @@ EOF
       ;;
   esac
 
+  # Pass-through: if the first arg looks like a flag, forward everything to claude directly
+  if [[ "$preset" == -* ]]; then
+    command claude "$preset" "${rest[@]}"
+    return $?
+  fi
+
   # Resolve preset (including aliases)
   local resolved
   resolved=$(_claudes_resolve "$preset") || {
