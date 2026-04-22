@@ -120,12 +120,20 @@ function claudes() {
     echo ""
     _claudes_print_presets
     echo ""
-    printf "  > "
+    local _default="${CLAUDES_DEFAULT:-}"
+    if [[ -n "$_default" ]]; then
+      printf "  > [enter = %s] " "$_default"
+    else
+      printf "  > "
+    fi
     read -r choice
     if [[ -z "$choice" ]]; then
-      echo "cancelled"; return 0
-    fi
-    if [[ "$choice" =~ ^[0-9]+$ ]]; then
+      if [[ -n "$_default" ]]; then
+        preset="$_default"
+      else
+        echo "cancelled"; return 0
+      fi
+    elif [[ "$choice" =~ ^[0-9]+$ ]]; then
       local resolved
       resolved=$(_claudes_key_by_index "$choice") || { echo "invalid: $choice" >&2; return 1; }
       preset="$resolved"
@@ -134,7 +142,7 @@ function claudes() {
     fi
   fi
 
-  # Help / list commands
+  # Help / list / config commands
   case "$preset" in
     help|-h|--help)
       cat <<'EOF'
@@ -145,6 +153,7 @@ USAGE
   claudes <preset> [args...]    Run a specific preset
   claudes list                  List all presets
   claudes show <preset>         Show resolved config for a preset
+  claudes config [presets|ux]   Interactive preset & UX manager
   claudes help                  Show this help
 
 BUILT-IN PRESETS
@@ -196,6 +205,17 @@ EOF
       _claudes_print_presets
       echo ""
       return 0
+      ;;
+    config)
+      local _cfg_script="${HOME}/.local/share/claudes/configure.sh"
+      if [[ -f "$_cfg_script" ]]; then
+        bash "$_cfg_script" "${rest[@]}"
+      else
+        echo "claudes config: configure.sh not found at $_cfg_script" >&2
+        echo "  Re-run installer: curl -fsSL https://raw.githubusercontent.com/yigitkonur/claudes/main/install.sh | bash" >&2
+        return 1
+      fi
+      return $?
       ;;
     show)
       local target="${rest[1]:-}"
