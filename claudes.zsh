@@ -259,9 +259,17 @@ EOF
       ;;
   esac
 
-  # Pass-through: if the first arg looks like a flag, forward everything to claude directly
+  # Pass-through: if the first arg looks like a flag, forward everything to claude directly.
+  # Use `whence -p` to resolve the claude binary by PATH, bypassing the `claude` shell
+  # function that the Warp remap installs (which would recurse back here).
   if [[ "$preset" == -* ]]; then
-    command claude "$preset" "${rest[@]}"
+    local _claude_bin
+    _claude_bin=$(whence -p claude 2>/dev/null)
+    if [[ -z "$_claude_bin" ]]; then
+      echo "claudes: claude binary not found in PATH" >&2
+      return 127
+    fi
+    "$_claude_bin" "$preset" "${rest[@]}"
     return $?
   fi
 
