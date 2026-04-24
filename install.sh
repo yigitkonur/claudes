@@ -237,13 +237,13 @@ ux:
 
 presets:
   plan:
-    flags: "--model opus --effort max --permission-mode plan"
-    description: "Opus 4.7 · max effort · plan mode"
+    flags: "--model opus[1m] --effort max --permission-mode plan"
+    description: "Opus 4.7 · 1M ctx · max effort · plan mode"
     alias: p
 
   max:
-    flags: "--model opus --effort max --dangerously-skip-permissions"
-    description: "Opus 4.7 · max effort · skip permissions · yolo"
+    flags: "--model opus[1m] --effort max --dangerously-skip-permissions"
+    description: "Opus 4.7 · 1M ctx · max effort · skip permissions · yolo"
     alias: m
 
   standard:

@@ -28,12 +28,12 @@ CLAUDES_PRESETS[quick]="--model sonnet --effort low --permission-mode default"
 CLAUDES_DESCRIPTIONS[quick]="Sonnet 4.6 · low effort · fast/cheap edits"
 CLAUDES_ALIASES[q]=quick
 
-CLAUDES_PRESETS[plan]="--model opus --effort max --permission-mode plan"
-CLAUDES_DESCRIPTIONS[plan]="Opus 4.7 · max effort · plan mode · deep thinking"
+CLAUDES_PRESETS[plan]="--model opus[1m] --effort max --permission-mode plan"
+CLAUDES_DESCRIPTIONS[plan]="Opus 4.7 · 1M ctx · max effort · plan mode · deep thinking"
 CLAUDES_ALIASES[p]=plan
 
-CLAUDES_PRESETS[research]="--model opus --effort max --permission-mode default"
-CLAUDES_DESCRIPTIONS[research]="Opus 4.7 · max effort · direct · explore/review"
+CLAUDES_PRESETS[research]="--model opus[1m] --effort max --permission-mode default"
+CLAUDES_DESCRIPTIONS[research]="Opus 4.7 · 1M ctx · max effort · direct · explore/review"
 CLAUDES_ALIASES[r]=research
 
 # ============ USER OVERRIDES / CUSTOM PRESETS ============
@@ -204,9 +204,9 @@ CUSTOM PRESETS
   CLAUDES_ENV[review]="CLAUDE_CODE_MAX_OUTPUT_TOKENS=16000"
 
   # Function-form preset (full zsh power)
-  _my_worktree() { command claude -w "${1:-feat-$(date +%s)}" --tmux --model opus --effort max "${@:2}"; }
+  _my_worktree() { command claude -w "${1:-feat-$(date +%s)}" --tmux --model 'opus[1m]' --effort max "${@:2}"; }
   CLAUDES_PRESETS[wt]="fn:_my_worktree"
-  CLAUDES_DESCRIPTIONS[wt]="Opus · max · spawn worktree + tmux"
+  CLAUDES_DESCRIPTIONS[wt]="Opus · 1M ctx · max · spawn worktree + tmux"
 
 MORE
   https://github.com/yigitkonur/claudes
