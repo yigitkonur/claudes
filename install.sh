@@ -87,7 +87,7 @@ OLD_UX="$CONFIG_DIR/ux-settings.zsh"
 if [ -f "$OLD_PRESETS" ] || [ -f "$OLD_UX" ]; then
   warn "Old config files found (.zsh format)."
   ask "Migrate to claudes.yaml? [Y/n]:"; read -r do_migrate < /dev/tty
-  if [[ "${do_migrate:l}" != "n" ]]; then
+  if [[ "$do_migrate" != [Nn] ]]; then
     python3 - "$OLD_PRESETS" "$OLD_UX" "$CLAUDES_YAML" "$INSTALL_DIR/yaml2sh.py" <<'PYEOF'
 import sys, os, subprocess, json
 
@@ -169,7 +169,7 @@ printf "    • ${C_BOLD}claude1..claude9${C_RST}  — jump to preset N from the
 printf "    • ${C_BOLD}claude → claudes${C_RST}  — remap the \`claude\` command\n\n"
 
 ask "Install enhanced UX? [Y/n]:"; read -r want_ux < /dev/tty
-INSTALL_UX=1; [[ "${want_ux:l}" == "n" ]] && INSTALL_UX=0
+INSTALL_UX=1; [[ "$want_ux" == [Nn] ]] && INSTALL_UX=0
 
 UX_ORDER="" UX_DEFAULT="standard" UX_REMAP="warp"
 
