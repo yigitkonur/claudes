@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Bash installer prompts no longer use zsh-only lowercase expansion, fixing
   `unbound variable` failures under `set -u`.
+- Installer config writes now validate the target directory before writing
+  `claudes.yaml` or the generated cache.
 
 ## [0.2.0] — 2026-04-21
 

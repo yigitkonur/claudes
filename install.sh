@@ -30,6 +30,14 @@ err()  { printf "${C_RED}[err]${C_RST} %s\n" "$1" >&2; }
 step() { printf "\n${C_BOLD}%s${C_RST}\n\n" "$1"; }
 ask()  { printf "${C_BLU}>${C_RST} %s " "$1"; }
 
+# ── Directory helper ───────────────────────────────────────────────────────
+_ensure_dir() {
+  local dir="$1" label="$2"
+  mkdir -p "$dir" || { err "Failed to create $label: $dir"; exit 1; }
+  [ -d "$dir" ] || { err "$label is not a directory: $dir"; exit 1; }
+  [ -w "$dir" ] || { err "$label is not writable: $dir"; exit 1; }
+}
+
 # ── Fetch helper ──────────────────────────────────────────────────────────
 _fetch_or_copy() {
   local src="$1" dst="$2"
@@ -58,7 +66,8 @@ fi
 # ── Step 1: Core install ──────────────────────────────────────────────────
 step "Step 1/4 — Core install"
 
-mkdir -p "$INSTALL_DIR" "$CONFIG_DIR"
+_ensure_dir "$INSTALL_DIR" "install directory"
+_ensure_dir "$CONFIG_DIR" "config directory"
 
 _fetch_or_copy "claudes.zsh"   "$INSTALL_DIR/claudes.zsh"
 _fetch_or_copy "yaml2sh.py"    "$INSTALL_DIR/yaml2sh.py"
@@ -88,6 +97,7 @@ if [ -f "$OLD_PRESETS" ] || [ -f "$OLD_UX" ]; then
   warn "Old config files found (.zsh format)."
   ask "Migrate to claudes.yaml? [Y/n]:"; read -r do_migrate < /dev/tty
   if [[ "$do_migrate" != [Nn] ]]; then
+    _ensure_dir "$CONFIG_DIR" "config directory"
     python3 - "$OLD_PRESETS" "$OLD_UX" "$CLAUDES_YAML" "$INSTALL_DIR/yaml2sh.py" <<'PYEOF'
 import sys, os, subprocess, json
 
@@ -225,7 +235,7 @@ else
   case "${pc:-1}" in
     1)
       UX_ORDER="plan max standard quick"
-      mkdir -p "$CONFIG_DIR"
+      _ensure_dir "$CONFIG_DIR" "config directory"
       cat > "$CLAUDES_YAML" <<'EOF'
 # ~/.config/claudes/claudes.yaml
 # edit directly or run: claudes config
@@ -275,6 +285,7 @@ step "Step 4/4 — Finishing up"
 
 # Merge UX settings into YAML (only if UX layer was installed and YAML exists)
 if [ "$INSTALL_UX" -eq 1 ] && [ -f "$CLAUDES_YAML" ]; then
+  _ensure_dir "$CONFIG_DIR" "config directory"
   python3 - "$CLAUDES_YAML" "$UX_ORDER" "$UX_DEFAULT" "$UX_REMAP" <<'PYEOF'
 import sys, json, os
 
@@ -315,6 +326,7 @@ fi
 
 # Warm the cache
 if [ -f "$CLAUDES_YAML" ]; then
+  _ensure_dir "$CONFIG_DIR" "config directory"
   python3 "$INSTALL_DIR/yaml2sh.py" "$CLAUDES_YAML" > "$CACHE" && ok "Cache warmed: $CACHE"
 fi
 
