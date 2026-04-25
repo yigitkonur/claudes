@@ -74,13 +74,13 @@ you want sonnet-fast for mechanical edits, opus-deep for architecture, plan mode
 
 ## install
 
-v2 TypeScript installer:
+v2 TypeScript installer. the npm package name is `claude-presets`:
 
 ```bash
 npx claude-presets install
 ```
 
-until the npm package is published, test v2 from GitHub or a clone:
+until that package is published, run the same installer from GitHub or a clone:
 
 ```bash
 npx --yes github:yigitkonur/claudes install
@@ -107,7 +107,7 @@ git clone https://github.com/yigitkonur/claudes.git
 cd claudes && ./install.sh
 ```
 
-both installers are interactive — they'll ask you four things:
+the v2 installer is interactive — it'll ask you four things:
 
 1. **core install** — installs the runtime, symlinks into `~/.zshrc.d/` or appends to `.zshrc`
 2. **commands + enhanced ux** — choose shell commands (`claude`, `claudes`, `ccp`, `claude-preset`), then optional single-key picker, `enter = default` preset, `claude1..9` shortcuts (see [enhanced ux](#enhanced-ux--single-key-picker))
@@ -115,6 +115,10 @@ both installers are interactive — they'll ask you four things:
 4. **finishing up** — writes config files and warms the runtime cache
 
 re-running is safe. nothing gets overwritten without asking.
+
+**package name vs command names:** `claude-presets` is the npx/npm package. during install you choose which shell commands should open the picker: `claude`, `claudes`, `ccp`, and/or `claude-preset`. selecting `claude` is intentional; it shadows the raw command only in your shell, while presets still launch the real Claude Code binary underneath.
+
+the legacy curl installer keeps the older zsh flow: core files, enhanced ux/remap, presets, finish. use v2 for selectable command names.
 
 ---
 
@@ -271,7 +275,7 @@ claudes show rmcp
 
 ## example presets to steal
 
-the [`examples/`](examples/) folder has eight ready-to-copy presets. copy the yaml block you want into `~/.config/claudes/claudes.yaml` under the `presets:` key — or run `claudes config presets` for the guided wizard.
+the [`examples/`](examples/) folder has eight legacy `.zsh` recipes whose flags map directly to YAML presets. copy the name, flags, alias, prompt/env/mcp pieces into `~/.config/claudes/claudes.yaml` under the `presets:` key — or run `claudes config presets` for the guided wizard.
 
 | file | preset | what it does |
 |---|---|---|

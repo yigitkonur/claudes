@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Installer can define multiple shell commands (`claude`, `claudes`, `ccp`,
   `claude-preset`) for opening the preset picker.
 
+### Changed
+- README and AGENTS now document the v2 `claude-presets` package, selectable
+  shell commands, npm/GitHub install paths, and current release checks.
+
 ### Fixed
 - Bash installer prompts no longer use zsh-only lowercase expansion, fixing
   `unbound variable` failures under `set -u`.
