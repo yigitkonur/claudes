@@ -1,0 +1,27 @@
+{
+  "name": "claudes",
+  "version": "2.0.0",
+  "description": "Claude Code preset picker and installer",
+  "license": "MIT",
+  "bin": {
+    "claudes": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc && chmod +x dist/cli.js",
+    "test": "node dist/cli.js test --self",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.2",
+    "typescript": "^5.9.3"
+  }
+}

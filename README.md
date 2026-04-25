@@ -1,6 +1,6 @@
 # claudes
 
-> one command, everything you need to swap between claude code configs. model, effort, permission mode, mcp servers, system prompts, env vars — all in a named preset. config lives in a single yaml file. zero deps beyond zsh, python3, and the [claude code](https://claude.com/claude-code) cli.
+> one command, everything you need to swap between claude code configs. model, effort, permission mode, mcp servers, system prompts, env vars — all in a named preset. config lives in a single yaml file. v2 is a TypeScript CLI for `npx claudes`; the legacy zsh installer remains available.
 
 [![shell](https://img.shields.io/badge/shell-zsh-89e051?style=flat-square)](https://www.zsh.org/)
 [![claude code](https://img.shields.io/badge/claude_code-compatible-f97316?style=flat-square)](https://claude.com/claude-code)
@@ -68,11 +68,29 @@ items 5–7 are custom presets the user copied from `examples/`. items marked `[
 
 you want sonnet-fast for mechanical edits, opus-deep for architecture, plan mode when you're scoping a feature, a read-only tool subset for PR review, a completely different mcp server set for grounded research, and `--bare` when you're offline. you could paste 80-char flag strings on every launch. you'll stop doing that after two days.
 
-`claudes` stores named presets as zsh associative-array entries. one line per dimension. shows a numbered picker when you forget names. resolves short aliases (`s`, `q`, `p`). passes every extra arg through transparently. no config file format, no dsl. you edit zsh. that's the whole api.
+`claudes` stores named presets in `~/.config/claudes/claudes.yaml`. it shows a numbered picker when you forget names, resolves short aliases (`s`, `q`, `p`), and passes every extra arg through transparently.
 
 ---
 
 ## install
+
+v2 TypeScript installer:
+
+```bash
+npx claudes install
+```
+
+the npm name `claudes` must be owned by this project before that command can be published. until then, test v2 from a clone:
+
+```bash
+git clone https://github.com/yigitkonur/claudes.git
+cd claudes
+npm install
+npm run build
+node dist/cli.js install
+```
+
+legacy installer:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/yigitkonur/claudes/main/install.sh | bash
@@ -85,12 +103,12 @@ git clone https://github.com/yigitkonur/claudes.git
 cd claudes && ./install.sh
 ```
 
-the installer is interactive — it'll ask you four things:
+both installers are interactive — they'll ask you four things:
 
-1. **core install** — copies `claudes.zsh`, symlinks into `~/.zshrc.d/` or appends to `.zshrc`
+1. **core install** — installs the runtime, symlinks into `~/.zshrc.d/` or appends to `.zshrc`
 2. **enhanced ux** — optional: single-key picker, `claude` → `claudes` remap, `enter = default` preset, `claude1..4` shortcuts (see [enhanced ux](#enhanced-ux--single-key-picker))
 3. **preset scheme** — pick the recommended 4-slot scheme, keep built-in defaults, configure custom interactively, or skip
-4. **finishing up** — writes config files, installs `configure.sh` for `claudes config`
+4. **finishing up** — writes config files and warms the runtime cache
 
 re-running is safe. nothing gets overwritten without asking.
 
@@ -108,8 +126,7 @@ claudes show research     # dry-run: print resolved flags without launching
 claudes config            # interactive preset & ux manager
 claudes config presets    # manage presets only
 claudes config ux         # order, default preset, remap settings
-claudes test              # run test suite (parse + dry-run)
-CLAUDES_RUN_LIVE=1 claudes test  # same + fire a real claude request
+claudes test              # run self-tests
 claudes help              # full help
 ```
 
@@ -117,7 +134,7 @@ claudes help              # full help
 
 ## built-in presets
 
-four presets ship with `claudes.zsh`. they're intentionally minimal — real customization goes in your `~/.config/claudes/presets.zsh`.
+four presets ship with `claudes`. they're intentionally minimal — real customization goes in your `~/.config/claudes/claudes.yaml`.
 
 | preset | alias | model | effort | mode | when to use |
 |---|---|---|---|---|---|
@@ -132,60 +149,64 @@ four presets ship with `claudes.zsh`. they're intentionally minimal — real cus
 
 ## the six dimensions
 
-a preset can have any combination of these. only `CLAUDES_PRESETS[name]` is required.
+a preset can have any combination of these. only `flags` is required.
 
-### 1. `CLAUDES_PRESETS[name]` — the flags (required)
+### 1. `flags` — the flags (required)
 
 a string of cli flags, or a `fn:` sentinel for function-form presets:
 
-```zsh
-CLAUDES_PRESETS[mine]="--model sonnet --effort high --permission-mode acceptEdits"
+```yaml
+presets:
+  mine:
+    flags: "--model sonnet --effort high --permission-mode acceptEdits"
 ```
 
 anything `claude --help` recognizes works here: `--model`, `--effort`, `--permission-mode`, `--tools`, `--allowedTools`, `--disallowedTools`, `--dangerously-skip-permissions`, `--bare`, `--print`, `--max-budget-usd`, etc.
 
-### 2. `CLAUDES_DESCRIPTIONS[name]` — picker label
+### 2. `description` — picker label
 
 one line, shows up in the picker and `claudes list`:
 
-```zsh
-CLAUDES_DESCRIPTIONS[mine]="Sonnet · high · my daily driver"
+```yaml
+description: "Sonnet · high · my daily driver"
 ```
 
-### 3. `CLAUDES_ALIASES[short]` — shortcut key
+### 3. `alias` — shortcut key
 
 single-char or short string → preset name:
 
-```zsh
-CLAUDES_ALIASES[m]=mine   # claudes m now works
+```yaml
+alias: m
 ```
 
-### 4. `CLAUDES_ENV[name]` — env vars
+### 4. `env` — env vars
 
-space-separated `KEY=value` pairs, exported into the claude process only — nothing leaks back to your shell:
+key/value pairs exported into the claude process only — nothing leaks back to your shell:
 
-```zsh
-CLAUDES_ENV[bigctx]="CLAUDE_CODE_MAX_OUTPUT_TOKENS=32000 MAX_THINKING_TOKENS=48000"
+```yaml
+env:
+  CLAUDE_CODE_MAX_OUTPUT_TOKENS: "32000"
+  MAX_THINKING_TOKENS: "48000"
 ```
 
 useful for token budget knobs, `CLAUDE_ORCHESTRATOR=1`, provider-specific vars, anything that's not a cli flag.
 
-### 5. `CLAUDES_MCP[name]` — a scoped mcp server set
+### 5. `mcp` — a scoped mcp server set
 
 path to a `.mcp.json`-shaped file. `claudes` expands `~`, checks the file exists, then passes `--mcp-config <path>`:
 
-```zsh
-CLAUDES_MCP[research]="$HOME/.config/claudes/mcp/research-only.json"
+```yaml
+mcp: "~/.config/claudes/mcp/research-only.json"
 ```
 
 combine with `--strict-mcp-config` in the flags to load *only* that file's servers (ignores global mcp config). useful when you want a preset that talks to exactly one mcp and nothing else.
 
-### 6. `CLAUDES_PROMPT[name]` — system-prompt addendum
+### 6. `prompt` — system-prompt addendum
 
 string appended via `--append-system-prompt`. cheapest way to scope behavior per-preset:
 
-```zsh
-CLAUDES_PROMPT[review]="You are in read-only review mode. Do not edit files."
+```yaml
+prompt: "You are in read-only review mode. Do not edit files."
 ```
 
 ---
@@ -237,7 +258,7 @@ claudes show rmcp
 
 **interactive manager** — instead of editing yaml by hand, run `claudes config presets`. it'll walk you through model/effort/mode, generate the flags, and write the entry for you.
 
-**verify everything works** — `claudes test` runs the full pipeline: YAML parse → cache → zsh sourcing → preset resolution. add `CLAUDES_RUN_LIVE=1` to fire a real 2-cent request too.
+**verify everything works** — `claudes test` runs the TypeScript self-tests for YAML parsing, preset resolution, ordering, and flag splitting.
 
 ---
 
@@ -256,7 +277,7 @@ the [`examples/`](examples/) folder has eight ready-to-copy presets. copy the ya
 | [`worktree.zsh`](examples/worktree.zsh) | `wt` | `fn:` — spawns `-w <name> --tmux` for parallel agents |
 | [`pr.zsh`](examples/pr.zsh) | `pr` | `fn:` — resolves pr via `gh`, then `--from-pr` to resume |
 
-plus [`examples/mcp/research-only.json`](examples/mcp/research-only.json) — mcp config template for `CLAUDES_MCP[...]`.
+plus [`examples/mcp/research-only.json`](examples/mcp/research-only.json) — mcp config template for the YAML `mcp:` field.
 
 ---
 
@@ -264,7 +285,7 @@ plus [`examples/mcp/research-only.json`](examples/mcp/research-only.json) — mc
 
 flag strings can't express everything. some presets need to resolve a pr number from `gh`, pick a worktree name, cd somewhere, or branch on an argument. for those, use the `fn:` form.
 
-define a zsh function, then point a preset at it:
+define a zsh function in your shell config, then point a YAML preset at it:
 
 ```zsh
 _claudes_preset_worktree() {
@@ -272,9 +293,13 @@ _claudes_preset_worktree() {
   shift 2>/dev/null || true
   command claude -w "$name" --tmux --model opus --effort max "$@"
 }
+```
 
-CLAUDES_PRESETS[wt]="fn:_claudes_preset_worktree"
-CLAUDES_DESCRIPTIONS[wt]="Opus · max · -w --tmux · parallel agent"
+```yaml
+presets:
+  wt:
+    flags: "fn:_claudes_preset_worktree"
+    description: "Opus · max · -w --tmux · parallel agent"
 ```
 
 ```bash
@@ -283,7 +308,7 @@ claudes wt                          # auto-named feat-<timestamp>
 claudes wt refactor-db "start by…"  # name + initial prompt
 ```
 
-`CLAUDES_ENV` still runs for `fn:` presets (in a subshell). `CLAUDES_MCP` and `CLAUDES_PROMPT` are ignored — the function owns those if it needs them.
+`env` still applies for `fn:` presets. `mcp` and `prompt` are ignored — the function owns those if it needs them.
 
 ---
 
@@ -294,9 +319,7 @@ install the ux layer for a faster daily workflow. the installer asks about this 
 ```bash
 # already ran the installer — just answer Y when it asks about enhanced ux
 # manual install:
-curl -fsSL https://raw.githubusercontent.com/yigitkonur/claudes/main/ux.zsh \
-  -o ~/.local/share/claudes/ux.zsh
-ln -sf ~/.local/share/claudes/ux.zsh ~/.zshrc.d/91-claudes-ux.zsh
+npx claudes install
 ```
 
 what it adds:
@@ -319,12 +342,13 @@ configure all of this interactively:
 claudes config ux
 ```
 
-or edit `~/.config/claudes/ux-settings.zsh` directly:
+or edit the `ux:` block in `~/.config/claudes/claudes.yaml` directly:
 
-```zsh
-CLAUDES_ORDER=(plan max standard quick)   # picker slot order
-CLAUDES_DEFAULT=standard                  # bare enter picks this
-CLAUDES_REMAP_CLAUDE=warp                 # warp | all | none
+```yaml
+ux:
+  order: [plan, max, standard, quick]
+  default: standard
+  remap: warp  # warp | all | none
 ```
 
 ---
@@ -348,8 +372,10 @@ what happens under the hood: the hook wires into the `ExitPlanMode` `PermissionR
 
 once installed, a preset like:
 
-```zsh
-CLAUDES_PRESETS[plan]="--model opus --effort max --permission-mode plan"
+```yaml
+presets:
+  plan:
+    flags: "--model opus --effort max --permission-mode plan"
 ```
 
 becomes a fully automated deep-thinking loop — plan → auto-approve → execute, no manual intervention.
@@ -379,18 +405,16 @@ because cli flags win, a preset overrides your `settings.json` baseline without 
 
 ## reference
 
-### registries
+### preset fields
 
-| variable | type | purpose |
+| field | type | purpose |
 |---|---|---|
-| `CLAUDES_PRESETS[name]` | string | cli flags, or `fn:<zsh_func>` |
-| `CLAUDES_DESCRIPTIONS[name]` | string | one-line label for picker |
-| `CLAUDES_ALIASES[short]` | string | `short → preset` shortcut |
-| `CLAUDES_ENV[name]` | string | `"KEY=val KEY2=val2"` exported at launch |
-| `CLAUDES_MCP[name]` | string | path to mcp json, injected as `--mcp-config` |
-| `CLAUDES_PROMPT[name]` | string | appended via `--append-system-prompt` |
-
-assign: `CLAUDES_PRESETS[foo]="..."` — unset: `unset 'CLAUDES_PRESETS[foo]'`
+| `flags` | string | cli flags, or `fn:<zsh_func>` |
+| `description` | string | one-line label for picker |
+| `alias` | string | shortcut that resolves to this preset |
+| `env` | map | env vars exported at launch |
+| `mcp` | string | path to mcp json, injected as `--mcp-config` |
+| `prompt` | string | appended via `--append-system-prompt` |
 
 ### commands
 
@@ -403,7 +427,8 @@ assign: `CLAUDES_PRESETS[foo]="..."` — unset: `unset 'CLAUDES_PRESETS[foo]'`
 | `claudes config` | interactive preset & ux manager |
 | `claudes config presets` | manage presets (add/edit/remove) |
 | `claudes config ux` | set order, default preset, remap |
-| `claudes test` | run test suite (yaml parse + dry-run + optional live) |
+| `claudes install` | install shell integration from the npm package |
+| `claudes test` | run TypeScript self-tests |
 | `claudes help` | full help text |
 
 ### markers (picker + list)
@@ -419,27 +444,25 @@ assign: `CLAUDES_PRESETS[foo]="..."` — unset: `unset 'CLAUDES_PRESETS[foo]'`
 
 | path | purpose |
 |---|---|
-| `~/.local/share/claudes/claudes.zsh` | the main function |
-| `~/.local/share/claudes/ux.zsh` | ux layer (optional, installed by installer) |
-| `~/.local/share/claudes/yaml2sh.py` | yaml → zsh converter (called at shell startup, cached) |
-| `~/.local/share/claudes/configure.sh` | preset manager, called by `claudes config` |
-| `~/.local/share/claudes/test.sh` | test suite, called by `claudes test` |
+| `~/.local/share/claudes/v2/dist/cli.js` | TypeScript runtime compiled to Node.js |
+| `~/.local/share/claudes/v2/claudes.zsh` | zsh shim that calls the Node runtime |
+| `~/.local/share/claudes/v2/ux.zsh` | optional ux layer for `claude1..9` and remap |
 | `~/.config/claudes/claudes.yaml` | **your config** — presets + ux settings |
-| `~/.config/claudes/.claudes-cache.zsh` | generated cache (auto-regenerated when yaml changes) |
+| `~/.config/claudes/.claudes-cache.json` | generated cache |
 | `~/.config/claudes/mcp/` | convention: mcp json files for `mcp:` preset key |
-| `~/.zshrc.d/90-claudes.zsh` | symlink → claudes.zsh (if `~/.zshrc.d/` exists) |
-| `~/.zshrc.d/91-claudes-ux.zsh` | symlink → ux.zsh (if ux layer installed) |
+| `~/.zshrc.d/90-claudes.zsh` | symlink → v2 shim (if `~/.zshrc.d/` exists) |
+| `~/.zshrc.d/91-claudes-ux.zsh` | symlink → v2 ux shim (if ux layer installed) |
 
 ---
 
 ## requirements
 
-- **zsh 5.0+** — uses associative arrays and zsh-specific parameter expansion
-- **python3** — converts `claudes.yaml` to a zsh-sourceable cache at shell startup (already installed on macOS and most Linux distros). `pyyaml` is used if available; falls back to a built-in parser for the claudes subset if not.
+- **node 20+** — runs the v2 TypeScript CLI after compilation
+- **zsh 5.0+** — shell integration and legacy `fn:` preset compatibility
 - **claude code cli 2.1+** — `npm install -g @anthropic-ai/claude-code`
 - macOS or Linux
 
-bash isn't supported. the function is small enough to port in an afternoon if you need it.
+python3 is only needed by the legacy shell installer/runtime.
 
 ## uninstall
 

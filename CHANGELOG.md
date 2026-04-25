@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- v2 TypeScript CLI package scaffold for `npx claudes`, including install,
+  list/show, preset execution, config management, shell integration, and
+  self-tests.
+
 ### Fixed
 - Bash installer prompts no longer use zsh-only lowercase expansion, fixing
   `unbound variable` failures under `set -u`.
