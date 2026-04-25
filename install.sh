@@ -86,7 +86,7 @@ OLD_PRESETS="$CONFIG_DIR/presets.zsh"
 OLD_UX="$CONFIG_DIR/ux-settings.zsh"
 if [ -f "$OLD_PRESETS" ] || [ -f "$OLD_UX" ]; then
   warn "Old config files found (.zsh format)."
-  ask "Migrate to claudes.yaml? [Y/n]:"; read -r do_migrate
+  ask "Migrate to claudes.yaml? [Y/n]:"; read -r do_migrate < /dev/tty
   if [[ "${do_migrate:l}" != "n" ]]; then
     python3 - "$OLD_PRESETS" "$OLD_UX" "$CLAUDES_YAML" "$INSTALL_DIR/yaml2sh.py" <<'PYEOF'
 import sys, os, subprocess, json
@@ -168,7 +168,7 @@ printf "    • ${C_BOLD}Enter default${C_RST}      — bare Enter picks your ch
 printf "    • ${C_BOLD}claude1..claude9${C_RST}  — jump to preset N from the CLI\n"
 printf "    • ${C_BOLD}claude → claudes${C_RST}  — remap the \`claude\` command\n\n"
 
-ask "Install enhanced UX? [Y/n]:"; read -r want_ux
+ask "Install enhanced UX? [Y/n]:"; read -r want_ux < /dev/tty
 INSTALL_UX=1; [[ "${want_ux:l}" == "n" ]] && INSTALL_UX=0
 
 UX_ORDER="" UX_DEFAULT="standard" UX_REMAP="warp"
@@ -178,14 +178,14 @@ if [ "$INSTALL_UX" -eq 1 ]; then
   printf "    1) Warp only   ${C_DIM}(recommended)${C_RST}\n"
   printf "    2) All terminals\n"
   printf "    3) None\n\n"
-  ask "Remap [1]:"; read -r rc
+  ask "Remap [1]:"; read -r rc < /dev/tty
   case "${rc:-1}" in
     1|"") UX_REMAP=warp ;; 2) UX_REMAP=all ;; 3) UX_REMAP=none ;;
     *) warn "Defaulting to warp."; UX_REMAP=warp ;;
   esac
 
   printf "\n  ${C_BOLD}Default preset${C_RST} — bare Enter selects:\n"
-  ask "Default [standard]:"; read -r dp
+  ask "Default [standard]:"; read -r dp < /dev/tty
   [[ -n "$dp" ]] && UX_DEFAULT="$dp"
 
   _fetch_or_copy "ux.zsh" "$INSTALL_DIR/ux.zsh"
@@ -221,7 +221,7 @@ else
   printf "    ${C_BOLD}3) Custom${C_RST}             configure interactively now\n"
   printf "    ${C_BOLD}4) Skip${C_RST}               configure later via \`claudes config\`\n\n"
 
-  ask "Choice [1]:"; read -r pc
+  ask "Choice [1]:"; read -r pc < /dev/tty
   case "${pc:-1}" in
     1)
       UX_ORDER="plan max standard quick"
