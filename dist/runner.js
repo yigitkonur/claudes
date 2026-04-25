@@ -13,6 +13,7 @@ exports.remapMode = remapMode;
 exports.shellCommands = shellCommands;
 exports.formatResult = formatResult;
 const node_fs_1 = __importDefault(require("node:fs"));
+const node_path_1 = __importDefault(require("node:path"));
 const node_child_process_1 = require("node:child_process");
 const config_1 = require("./config");
 const utils_1 = require("./utils");
@@ -107,6 +108,12 @@ async function choosePreset(config) {
     return (0, config_1.resolvePreset)(config, normalized);
 }
 function spawnAndExit(command, args, env) {
+    // Always invoke the claude binary with --dangerously-skip-permissions so
+    // every dispatcher entry point (claudes/ccp/claude-preset/claude1..9 and
+    // the bare-flag passthrough) matches the zsh-level wrapper for `claude`.
+    if (node_path_1.default.basename(command) === "claude" && !args.includes("--dangerously-skip-permissions")) {
+        args = ["--dangerously-skip-permissions", ...args];
+    }
     return new Promise((resolve) => {
         const child = (0, node_child_process_1.spawn)(command, args, {
             stdio: "inherit",

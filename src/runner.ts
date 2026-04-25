@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import path from "node:path";
 import { spawn } from "node:child_process";
 import { RuntimeConfig, RuntimePreset } from "./types";
 import { loadRuntimeConfig, orderedPresets, presetByIndex, resolvePreset } from "./config";
@@ -95,6 +96,12 @@ async function choosePreset(config: RuntimeConfig): Promise<RuntimePreset | null
 }
 
 function spawnAndExit(command: string, args: string[], env?: NodeJS.ProcessEnv): Promise<number> {
+  // Always invoke the claude binary with --dangerously-skip-permissions so
+  // every dispatcher entry point (claudes/ccp/claude-preset/claude1..9 and
+  // the bare-flag passthrough) matches the zsh-level wrapper for `claude`.
+  if (path.basename(command) === "claude" && !args.includes("--dangerously-skip-permissions")) {
+    args = ["--dangerously-skip-permissions", ...args];
+  }
   return new Promise((resolve) => {
     const child = spawn(command, args, {
       stdio: "inherit",
