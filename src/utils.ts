@@ -66,6 +66,24 @@ export function ensureDir(dir: string, label: string): void {
   fs.accessSync(dir, fs.constants.W_OK);
 }
 
+function isEnoent(error: unknown): boolean {
+  return error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT";
+}
+
+export function writeTextFileEnsuringParent(file: string, contents: string, label: string): void {
+  const parent = path.dirname(file);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    ensureDir(parent, `${label} directory`);
+    try {
+      fs.writeFileSync(file, contents, "utf8");
+      return;
+    } catch (error) {
+      if (isEnoent(error) && attempt === 0) continue;
+      throw new Error(`Failed to write ${label}: ${file}\n${String(error)}`);
+    }
+  }
+}
+
 export function expandHome(value: string): string {
   if (value === "~") return os.homedir();
   if (value.startsWith("~/")) return path.join(os.homedir(), value.slice(2));

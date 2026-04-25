@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `unbound variable` failures under `set -u`.
 - Installer config writes now validate the target directory before writing
   `claudes.yaml` or the generated cache.
+- v2 config and cache writes now recreate the config directory at write time and
+  retry once if it disappears mid-install, covering fresh and interrupted
+  installs.
 
 ## [0.2.0] — 2026-04-21
 

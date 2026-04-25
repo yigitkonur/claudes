@@ -1,7 +1,6 @@
 import fs from "node:fs";
-import path from "node:path";
 import { FileConfig, PresetConfig, RemapMode, RuntimeConfig, RuntimePreset } from "./types";
-import { ensureDir, getPaths } from "./utils";
+import { getPaths, writeTextFileEnsuringParent } from "./utils";
 
 export const builtInPresets: RuntimePreset[] = [
   {
@@ -251,8 +250,7 @@ export function readFileConfig(): FileConfig {
 
 export function writeFileConfig(data: FileConfig): void {
   const paths = getPaths();
-  ensureDir(paths.configDir, "config directory");
-  fs.writeFileSync(paths.configFile, renderYaml(data), "utf8");
+  writeTextFileEnsuringParent(paths.configFile, renderYaml(data), "config file");
   try {
     fs.rmSync(paths.cacheFile, { force: true });
   } catch {
@@ -341,8 +339,7 @@ export function presetByIndex(config: RuntimeConfig, index: number): RuntimePres
 
 export function writeCache(config: RuntimeConfig): void {
   const paths = getPaths();
-  ensureDir(path.dirname(paths.cacheFile), "config directory");
-  fs.writeFileSync(
+  writeTextFileEnsuringParent(
     paths.cacheFile,
     JSON.stringify(
       {
@@ -353,6 +350,6 @@ export function writeCache(config: RuntimeConfig): void {
       null,
       2,
     ),
-    "utf8",
+    "cache file",
   );
 }

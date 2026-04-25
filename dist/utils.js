@@ -11,6 +11,7 @@ exports.err = err;
 exports.step = step;
 exports.getPaths = getPaths;
 exports.ensureDir = ensureDir;
+exports.writeTextFileEnsuringParent = writeTextFileEnsuringParent;
 exports.expandHome = expandHome;
 exports.packageRoot = packageRoot;
 exports.shellQuote = shellQuote;
@@ -78,6 +79,24 @@ function ensureDir(dir, label) {
     if (!stat.isDirectory())
         throw new Error(`${label} is not a directory: ${dir}`);
     node_fs_1.default.accessSync(dir, node_fs_1.default.constants.W_OK);
+}
+function isEnoent(error) {
+    return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
+function writeTextFileEnsuringParent(file, contents, label) {
+    const parent = node_path_1.default.dirname(file);
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+        ensureDir(parent, `${label} directory`);
+        try {
+            node_fs_1.default.writeFileSync(file, contents, "utf8");
+            return;
+        }
+        catch (error) {
+            if (isEnoent(error) && attempt === 0)
+                continue;
+            throw new Error(`Failed to write ${label}: ${file}\n${String(error)}`);
+        }
+    }
 }
 function expandHome(value) {
     if (value === "~")

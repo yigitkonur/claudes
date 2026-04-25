@@ -1,7 +1,15 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { parseYaml, renderYaml, builtInPresets, loadRuntimeConfig, orderedPresets } from "./config";
+import {
+  parseYaml,
+  renderYaml,
+  builtInPresets,
+  loadRuntimeConfig,
+  orderedPresets,
+  writeCache,
+  writeFileConfig,
+} from "./config";
 import { recommendedConfig } from "./install";
 import { formatResult } from "./runner";
 import { splitShellWords } from "./utils";
@@ -84,6 +92,60 @@ remove_builtins:
         assert(!runtime.presets.has("research"), "research should be removed");
         assert(orderedPresets(runtime)[0]?.name === "plan", "plan should be first");
         assert(runtime.ux.commands[0] === "claudes", "default command should be claudes");
+      });
+    },
+  },
+  {
+    name: "Config and cache writers recreate missing config directory",
+    fn: () => {
+      withTempHome(() => {
+        const configDir = path.join(process.env.XDG_CONFIG_HOME!, "claudes");
+        const configFile = path.join(configDir, "claudes.yaml");
+        const cacheFile = path.join(configDir, ".claudes-cache.json");
+
+        writeFileConfig(recommendedConfig());
+        assert(fs.existsSync(configFile), "config file should be written");
+
+        fs.rmSync(configDir, { recursive: true, force: true });
+        writeCache(loadRuntimeConfig());
+        assert(fs.existsSync(cacheFile), "cache file should be written");
+      });
+    },
+  },
+  {
+    name: "Config writer retries if directory disappears during write",
+    fn: () => {
+      withTempHome(() => {
+        const configDir = path.join(process.env.XDG_CONFIG_HOME!, "claudes");
+        const configFile = path.join(configDir, "claudes.yaml");
+        const originalWriteFileSync = fs.writeFileSync;
+        let failedOnce = false;
+
+        fs.writeFileSync = ((file, data, options) => {
+          if (!failedOnce && file === configFile) {
+            failedOnce = true;
+            fs.rmSync(configDir, { recursive: true, force: true });
+            const error = new Error("simulated missing config directory") as NodeJS.ErrnoException;
+            error.code = "ENOENT";
+            throw error;
+          }
+          return (
+            originalWriteFileSync as unknown as (
+              target: fs.PathOrFileDescriptor,
+              contents: string | NodeJS.ArrayBufferView,
+              writeOptions?: fs.WriteFileOptions,
+            ) => void
+          )(file, data, options);
+        }) as typeof fs.writeFileSync;
+
+        try {
+          writeFileConfig(recommendedConfig());
+        } finally {
+          fs.writeFileSync = originalWriteFileSync;
+        }
+
+        assert(failedOnce, "test should simulate one ENOENT");
+        assert(fs.existsSync(configFile), "config file should be written after retry");
       });
     },
   },

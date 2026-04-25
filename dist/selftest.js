@@ -95,6 +95,50 @@ remove_builtins:
         },
     },
     {
+        name: "Config and cache writers recreate missing config directory",
+        fn: () => {
+            withTempHome(() => {
+                const configDir = node_path_1.default.join(process.env.XDG_CONFIG_HOME, "claudes");
+                const configFile = node_path_1.default.join(configDir, "claudes.yaml");
+                const cacheFile = node_path_1.default.join(configDir, ".claudes-cache.json");
+                (0, config_1.writeFileConfig)((0, install_1.recommendedConfig)());
+                assert(node_fs_1.default.existsSync(configFile), "config file should be written");
+                node_fs_1.default.rmSync(configDir, { recursive: true, force: true });
+                (0, config_1.writeCache)((0, config_1.loadRuntimeConfig)());
+                assert(node_fs_1.default.existsSync(cacheFile), "cache file should be written");
+            });
+        },
+    },
+    {
+        name: "Config writer retries if directory disappears during write",
+        fn: () => {
+            withTempHome(() => {
+                const configDir = node_path_1.default.join(process.env.XDG_CONFIG_HOME, "claudes");
+                const configFile = node_path_1.default.join(configDir, "claudes.yaml");
+                const originalWriteFileSync = node_fs_1.default.writeFileSync;
+                let failedOnce = false;
+                node_fs_1.default.writeFileSync = ((file, data, options) => {
+                    if (!failedOnce && file === configFile) {
+                        failedOnce = true;
+                        node_fs_1.default.rmSync(configDir, { recursive: true, force: true });
+                        const error = new Error("simulated missing config directory");
+                        error.code = "ENOENT";
+                        throw error;
+                    }
+                    return originalWriteFileSync(file, data, options);
+                });
+                try {
+                    (0, config_1.writeFileConfig)((0, install_1.recommendedConfig)());
+                }
+                finally {
+                    node_fs_1.default.writeFileSync = originalWriteFileSync;
+                }
+                assert(failedOnce, "test should simulate one ENOENT");
+                assert(node_fs_1.default.existsSync(configFile), "config file should be written after retry");
+            });
+        },
+    },
+    {
         name: "Shell flag splitter handles quoted values",
         fn: () => {
             const words = (0, utils_1.splitShellWords)('--model sonnet --append-system-prompt "read only"');

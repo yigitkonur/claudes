@@ -15,7 +15,6 @@ exports.resolvePreset = resolvePreset;
 exports.presetByIndex = presetByIndex;
 exports.writeCache = writeCache;
 const node_fs_1 = __importDefault(require("node:fs"));
-const node_path_1 = __importDefault(require("node:path"));
 const utils_1 = require("./utils");
 exports.builtInPresets = [
     {
@@ -267,8 +266,7 @@ function readFileConfig() {
 }
 function writeFileConfig(data) {
     const paths = (0, utils_1.getPaths)();
-    (0, utils_1.ensureDir)(paths.configDir, "config directory");
-    node_fs_1.default.writeFileSync(paths.configFile, renderYaml(data), "utf8");
+    (0, utils_1.writeTextFileEnsuringParent)(paths.configFile, renderYaml(data), "config file");
     try {
         node_fs_1.default.rmSync(paths.cacheFile, { force: true });
     }
@@ -353,10 +351,9 @@ function presetByIndex(config, index) {
 }
 function writeCache(config) {
     const paths = (0, utils_1.getPaths)();
-    (0, utils_1.ensureDir)(node_path_1.default.dirname(paths.cacheFile), "config directory");
-    node_fs_1.default.writeFileSync(paths.cacheFile, JSON.stringify({
+    (0, utils_1.writeTextFileEnsuringParent)(paths.cacheFile, JSON.stringify({
         ux: config.ux,
         presets: Array.from(config.presets.values()),
         aliases: Object.fromEntries(config.aliases),
-    }, null, 2), "utf8");
+    }, null, 2), "cache file");
 }
