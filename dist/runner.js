@@ -10,6 +10,7 @@ exports.runPreset = runPreset;
 exports.runCliPreset = runCliPreset;
 exports.positionName = positionName;
 exports.remapMode = remapMode;
+exports.shellCommands = shellCommands;
 exports.formatResult = formatResult;
 const node_fs_1 = __importDefault(require("node:fs"));
 const node_child_process_1 = require("node:child_process");
@@ -46,20 +47,23 @@ function printPresets(config = (0, config_1.loadRuntimeConfig)()) {
     console.log("");
 }
 function printHelp() {
-    console.log(`claudes — Claude Code preset picker
+    console.log(`claude-presets / claudes — Claude Code preset picker
 
 USAGE
+  claude-presets install        Install shell integration
   claudes                       Interactive picker
   claudes <preset> [args...]    Run a specific preset
   claudes list                  List all presets
   claudes show <preset>         Show resolved config for a preset
   claudes config [presets|ux]   Interactive preset & UX manager
-  claudes install               Install shell integration
   claudes test                  Run self tests
   claudes help                  Show this help
 
 EXAMPLES
+  npx claude-presets install
   claudes
+  ccp list
+  claude-preset show standard
   claudes standard
   claudes s "fix the bug"
   claudes plan --resume
@@ -192,6 +196,9 @@ function positionName(index) {
 }
 function remapMode() {
     return (0, config_1.loadRuntimeConfig)().ux.remap;
+}
+function shellCommands() {
+    return (0, config_1.loadRuntimeConfig)().ux.commands;
 }
 function formatResult(label, pass) {
     return `${pass ? utils_1.colors.green : utils_1.colors.red}${pass ? "[pass]" : "[FAIL]"}${utils_1.colors.reset} ${label}`;

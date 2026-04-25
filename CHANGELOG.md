@@ -8,9 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- v2 TypeScript CLI package scaffold for `npx claudes`, including install,
+- v2 TypeScript CLI package scaffold for `npx claude-presets`, including install,
   list/show, preset execution, config management, shell integration, and
   self-tests.
+- Installer can define multiple shell commands (`claude`, `claudes`, `ccp`,
+  `claude-preset`) for opening the preset picker.
 
 ### Fixed
 - Bash installer prompts no longer use zsh-only lowercase expansion, fixing

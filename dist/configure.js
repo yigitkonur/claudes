@@ -238,37 +238,30 @@ async function managePresets() {
 async function manageUx() {
     const data = (0, config_1.readFileConfig)();
     const currentOrder = data.ux?.order?.join(" ") || "";
+    const currentCommands = (0, config_1.normalizeShellCommands)(data.ux?.commands).join(" ");
     let defaultPreset = data.ux?.default || "standard";
-    let remap = data.ux?.remap || "warp";
     console.log(`\n${utils_1.colors.bold}UX settings${utils_1.colors.reset}\n`);
     console.log("  Current:");
     console.log(`    Order:   ${utils_1.colors.dim}${currentOrder || "(alphabetical)"}${utils_1.colors.reset}`);
     console.log(`    Default: ${utils_1.colors.dim}${defaultPreset}${utils_1.colors.reset}`);
-    console.log(`    Remap:   ${utils_1.colors.dim}${remap}${utils_1.colors.reset}\n`);
+    console.log(`    Commands:${utils_1.colors.dim} ${currentCommands}${utils_1.colors.reset}\n`);
     console.log(`${utils_1.colors.bold}Picker order${utils_1.colors.reset} — space-separated preset names`);
     console.log(`${utils_1.colors.dim}Example: plan max standard quick${utils_1.colors.reset}`);
     const order = (await (0, utils_1.ask)(`Order [${currentOrder}]:`)) || currentOrder;
     const newDefault = await (0, utils_1.ask)(`Default [${defaultPreset}]:`);
     if (newDefault)
         defaultPreset = newDefault;
-    console.log(`\n${utils_1.colors.bold}Remap 'claude' → 'claudes'${utils_1.colors.reset}`);
-    console.log(`    1) warp  — Warp terminal only ${utils_1.colors.dim}(recommended)${utils_1.colors.reset}`);
-    console.log("    2) all   — every terminal");
-    console.log("    3) none  — never\n");
-    const remapNumber = remap === "warp" ? "1" : remap === "all" ? "2" : "3";
-    const remapChoice = await (0, utils_1.ask)(`Remap [${remapNumber}]:`);
-    if (remapChoice === "1")
-        remap = "warp";
-    else if (remapChoice === "2")
-        remap = "all";
-    else if (remapChoice === "3")
-        remap = "none";
+    console.log(`\n${utils_1.colors.bold}Shell commands${utils_1.colors.reset} — choose any of: ${config_1.allowedShellCommands.join(", ")}`);
+    const commandInput = await (0, utils_1.ask)(`Commands [${currentCommands}]:`);
+    const commands = (0, config_1.normalizeShellCommands)(commandInput ? commandInput.split(/[\s,]+/) : data.ux?.commands);
+    const remap = commands.includes("claude") ? "all" : "none";
     (0, config_1.writeFileConfig)({
         ...data,
         ux: {
             order: order.split(/\s+/).filter(Boolean),
             default: defaultPreset,
             remap,
+            commands,
         },
     });
     (0, utils_1.ok)("Updated UX settings.");
@@ -287,7 +280,7 @@ async function configure(args) {
     console.log(`\n${utils_1.colors.bold}claudes config${utils_1.colors.reset}\n`);
     console.log(`  Config: ${utils_1.colors.dim}${paths.configFile}${utils_1.colors.reset}\n`);
     console.log("    1) Manage presets");
-    console.log("    2) UX settings (order, default, remap)");
+    console.log("    2) UX settings (order, default, shell commands)");
     console.log("    q) Quit\n");
     const choice = (await (0, utils_1.ask)("Choice:")).toLowerCase();
     if (choice === "1" || choice === "presets")

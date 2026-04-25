@@ -3,7 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.builtInPresets = void 0;
+exports.defaultShellCommands = exports.allowedShellCommands = exports.builtInPresets = void 0;
+exports.normalizeShellCommands = normalizeShellCommands;
 exports.parseYaml = parseYaml;
 exports.renderYaml = renderYaml;
 exports.readFileConfig = readFileConfig;
@@ -46,6 +47,18 @@ exports.builtInPresets = [
         builtin: true,
     },
 ];
+exports.allowedShellCommands = ["claude", "claudes", "ccp", "claude-preset"];
+exports.defaultShellCommands = ["claudes"];
+function normalizeShellCommands(commands) {
+    const allowed = new Set(exports.allowedShellCommands);
+    const result = [];
+    for (const command of commands || []) {
+        const trimmed = command.trim();
+        if (allowed.has(trimmed) && !result.includes(trimmed))
+            result.push(trimmed);
+    }
+    return result.length ? result : [...exports.defaultShellCommands];
+}
 function stripInlineComment(value) {
     let single = false;
     let double = false;
@@ -153,6 +166,8 @@ function parseYaml(text) {
             const parsed = parseFlowList(rest);
             if (key === "order")
                 result.ux.order = parsed || rest.split(/\s+/).filter(Boolean);
+            if (key === "commands")
+                result.ux.commands = parsed || rest.split(/\s+/).filter(Boolean);
             if (key === "default")
                 result.ux.default = unquote(rest);
             if (key === "remap") {
@@ -204,6 +219,7 @@ function renderYaml(data) {
         lines.push(`  order: [${ux.order.join(", ")}]`);
     lines.push(`  default: ${ux.default || "standard"}`);
     lines.push(`  remap: ${ux.remap || "warp"}  # warp | all | none`);
+    lines.push(`  commands: [${normalizeShellCommands(ux.commands).join(", ")}]`);
     lines.push("");
     lines.push("presets:");
     const presets = data.presets || {};
@@ -310,6 +326,7 @@ function loadRuntimeConfig() {
             order: file.ux?.order || [],
             default: file.ux?.default || "standard",
             remap: file.ux?.remap || "warp",
+            commands: normalizeShellCommands(file.ux?.commands),
         },
     };
 }

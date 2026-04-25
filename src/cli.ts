@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { configure } from "./configure";
 import { install } from "./install";
-import { printHelp, printPresets, positionName, remapMode, runCliPreset, runPreset, showPreset } from "./runner";
+import { printHelp, printPresets, positionName, remapMode, runCliPreset, runPreset, shellCommands, showPreset } from "./runner";
 import { loadRuntimeConfig, presetByIndex } from "./config";
 import { runSelfTests } from "./selftest";
 import { err } from "./utils";
@@ -45,6 +45,10 @@ async function main(): Promise<number> {
   }
   if (command === "__remap") {
     console.log(remapMode());
+    return 0;
+  }
+  if (command === "__commands") {
+    console.log(shellCommands().join(" "));
     return 0;
   }
   if (command === "__pos-name") {

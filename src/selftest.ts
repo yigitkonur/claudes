@@ -37,6 +37,7 @@ const tests: Test[] = [
   order: [plan, max, standard, quick]
   default: standard
   remap: all
+  commands: [claude, claudes, ccp, claude-preset]
 
 presets:
   review:
@@ -51,6 +52,7 @@ remove_builtins:
 `);
       assert(data.ux?.order?.[0] === "plan", "ux order missing");
       assert(data.ux?.remap === "all", "remap missing");
+      assert(data.ux?.commands?.includes("ccp"), "commands missing");
       assert(data.presets?.review?.env?.CLAUDE_CODE_MAX_OUTPUT_TOKENS === "16000", "env missing");
       assert(data.remove_builtins?.[0] === "research", "remove_builtins missing");
     },
@@ -81,6 +83,7 @@ remove_builtins:
         const runtime = loadRuntimeConfig();
         assert(!runtime.presets.has("research"), "research should be removed");
         assert(orderedPresets(runtime)[0]?.name === "plan", "plan should be first");
+        assert(runtime.ux.commands[0] === "claudes", "default command should be claudes");
       });
     },
   },

@@ -34,6 +34,19 @@ export const builtInPresets: RuntimePreset[] = [
   },
 ];
 
+export const allowedShellCommands = ["claude", "claudes", "ccp", "claude-preset"] as const;
+export const defaultShellCommands = ["claudes"];
+
+export function normalizeShellCommands(commands: string[] | undefined): string[] {
+  const allowed = new Set<string>(allowedShellCommands);
+  const result: string[] = [];
+  for (const command of commands || []) {
+    const trimmed = command.trim();
+    if (allowed.has(trimmed) && !result.includes(trimmed)) result.push(trimmed);
+  }
+  return result.length ? result : [...defaultShellCommands];
+}
+
 function stripInlineComment(value: string): string {
   let single = false;
   let double = false;
@@ -143,6 +156,7 @@ export function parseYaml(text: string): FileConfig {
       result.ux ||= {};
       const parsed = parseFlowList(rest);
       if (key === "order") result.ux.order = parsed || rest.split(/\s+/).filter(Boolean);
+      if (key === "commands") result.ux.commands = parsed || rest.split(/\s+/).filter(Boolean);
       if (key === "default") result.ux.default = unquote(rest);
       if (key === "remap") {
         const remap = unquote(rest) as RemapMode;
@@ -195,6 +209,7 @@ export function renderYaml(data: FileConfig): string {
   if (ux.order?.length) lines.push(`  order: [${ux.order.join(", ")}]`);
   lines.push(`  default: ${ux.default || "standard"}`);
   lines.push(`  remap: ${ux.remap || "warp"}  # warp | all | none`);
+  lines.push(`  commands: [${normalizeShellCommands(ux.commands).join(", ")}]`);
   lines.push("");
   lines.push("presets:");
   const presets = data.presets || {};
@@ -295,6 +310,7 @@ export function loadRuntimeConfig(): RuntimeConfig {
       order: file.ux?.order || [],
       default: file.ux?.default || "standard",
       remap: file.ux?.remap || "warp",
+      commands: normalizeShellCommands(file.ux?.commands),
     },
   };
 }

@@ -35,9 +35,20 @@ function zshCoreContent() {
     const paths = (0, utils_1.getPaths)();
     return `# claudes v2 — https://github.com/yigitkonur/claudes
 _claudes_node=${JSON.stringify(node_path_1.default.join(paths.v2Dir, "dist", "cli.js"))}
-claudes() {
-  command node "$_claudes_node" "$@"
+_claudes_define_command() {
+  local _name="$1"
+  case "$_name" in
+    claude|claudes|ccp|claude-preset)
+      unalias "$_name" 2>/dev/null
+      eval "function $_name { command node \\"$_claudes_node\\" \\"\\$@\\"; }"
+      ;;
+  esac
 }
+for _claudes_cmd in $(command node "$_claudes_node" __commands 2>/dev/null || echo claudes); do
+  _claudes_define_command "$_claudes_cmd"
+done
+unset _claudes_cmd
+unfunction _claudes_define_command 2>/dev/null
 `;
 }
 function zshUxContent() {
@@ -47,7 +58,7 @@ _claudes_node=${JSON.stringify(node_path_1.default.join(paths.v2Dir, "dist", "cl
 
 _claudes_by_pos() {
   local n="$1"; shift
-  claudes __pos "$n" "$@"
+  command node "$_claudes_node" __pos "$n" "$@"
 }
 
 for _cpos in 1 2 3 4 5 6 7 8 9; do
@@ -55,17 +66,6 @@ for _cpos in 1 2 3 4 5 6 7 8 9; do
 done
 unset _cpos
 
-_claudes_do_remap() {
-  unalias claude 2>/dev/null
-  function claude { claudes "$@"; }
-}
-
-case "$(command node "$_claudes_node" __remap 2>/dev/null || echo none)" in
-  all)  _claudes_do_remap ;;
-  warp) [[ "$TERM_PROGRAM" == "WarpTerminal" ]] && _claudes_do_remap ;;
-  none) ;;
-esac
-unfunction _claudes_do_remap 2>/dev/null
 `;
 }
 function installShellFile(name, content, linkName) {
@@ -166,7 +166,7 @@ function recommendedConfig() {
         remove_builtins: ["research"],
     };
 }
-function mergeUx(data, order, defaultPreset, remap) {
+function mergeUx(data, order, defaultPreset, remap, commands) {
     return {
         ...data,
         ux: {
@@ -174,8 +174,22 @@ function mergeUx(data, order, defaultPreset, remap) {
             ...(order.length ? { order } : {}),
             default: defaultPreset,
             remap,
+            commands: (0, config_1.normalizeShellCommands)(commands),
         },
     };
+}
+function parseShellCommandSelection(value) {
+    const byNumber = {
+        "1": "claude",
+        "2": "claudes",
+        "3": "ccp",
+        "4": "claude-preset",
+    };
+    const normalized = value
+        .split(/[\s,]+/)
+        .map((part) => byNumber[part] || part.trim())
+        .filter(Boolean);
+    return (0, config_1.normalizeShellCommands)(normalized);
 }
 async function install() {
     const paths = (0, utils_1.getPaths)();
@@ -189,7 +203,6 @@ async function install() {
     (0, utils_1.ensureDir)(paths.configDir, "config directory");
     copyRuntime();
     (0, utils_1.ok)(`Scripts at ${paths.v2Dir}/`);
-    installShellFile("claudes.zsh", zshCoreContent(), "90-claudes.zsh");
     const migrated = migrateLegacy();
     if (migrated && !node_fs_1.default.existsSync(paths.configFile)) {
         const doMigrate = await (0, utils_1.ask)("Migrate to claudes.yaml? [Y/n]:");
@@ -198,29 +211,29 @@ async function install() {
             (0, utils_1.ok)(`Migrated to ${paths.configFile}`);
         }
     }
-    (0, utils_1.step)("Step 2/4 — Enhanced UX");
+    (0, utils_1.step)("Step 2/4 — Commands and UX");
+    console.log("  Choose which shell commands should open the preset picker:\n");
+    console.log(`    1) claude         ${utils_1.colors.dim}overrides the raw claude command; presets still launch the real binary${utils_1.colors.reset}`);
+    console.log(`    2) claudes        ${utils_1.colors.dim}current project command${utils_1.colors.reset}`);
+    console.log(`    3) ccp            ${utils_1.colors.dim}short for Claude Code presets${utils_1.colors.reset}`);
+    console.log(`    4) claude-preset  ${utils_1.colors.dim}singular compatibility alias${utils_1.colors.reset}\n`);
+    console.log(`  ${utils_1.colors.dim}Enter numbers or names separated by spaces/commas.${utils_1.colors.reset}`);
+    const commandChoice = await (0, utils_1.ask)("Commands [1 2 3 4]:");
+    const selectedCommands = parseShellCommandSelection(commandChoice || "1 2 3 4");
+    (0, utils_1.ok)(`Shell commands: ${selectedCommands.join(", ")}`);
+    installShellFile("claudes.zsh", zshCoreContent(), "90-claudes.zsh");
+    console.log("");
     console.log("  The UX layer adds:");
     console.log(`    • ${utils_1.colors.bold}Single-key picker${utils_1.colors.reset}  — 1/2/3 or p/s/q, no Enter needed`);
     console.log(`    • ${utils_1.colors.bold}Enter default${utils_1.colors.reset}      — bare Enter picks your chosen default`);
     console.log(`    • ${utils_1.colors.bold}claude1..claude9${utils_1.colors.reset}  — jump to preset N from the CLI`);
-    console.log(`    • ${utils_1.colors.bold}claude → claudes${utils_1.colors.reset}  — remap the \`claude\` command\n`);
+    console.log(`    • ${utils_1.colors.bold}selected aliases${utils_1.colors.reset} — ${selectedCommands.join(", ")} open this picker\n`);
     const wantUx = await (0, utils_1.ask)("Install enhanced UX? [Y/n]:");
     const installUx = wantUx.toLowerCase() !== "n";
     let uxOrder = [];
     let uxDefault = "standard";
-    let uxRemap = "warp";
+    const uxRemap = selectedCommands.includes("claude") ? "all" : "none";
     if (installUx) {
-        console.log(`\n  ${utils_1.colors.bold}Remap 'claude' → 'claudes'${utils_1.colors.reset}\n`);
-        console.log(`    1) Warp only   ${utils_1.colors.dim}(recommended)${utils_1.colors.reset}`);
-        console.log("    2) All terminals");
-        console.log("    3) None\n");
-        const remapChoice = await (0, utils_1.ask)("Remap [1]:");
-        if (remapChoice === "2")
-            uxRemap = "all";
-        else if (remapChoice === "3")
-            uxRemap = "none";
-        else
-            uxRemap = "warp";
         console.log(`\n  ${utils_1.colors.bold}Default preset${utils_1.colors.reset} — bare Enter selects:`);
         const defaultChoice = await (0, utils_1.ask)("Default [standard]:");
         if (defaultChoice)
@@ -240,7 +253,7 @@ async function install() {
         console.log(`       ${utils_1.colors.dim}  quick    · Sonnet low + skip permissions (fast)${utils_1.colors.reset}\n`);
         console.log(`    ${utils_1.colors.bold}2) Built-in defaults${utils_1.colors.reset}  standard / quick / plan / research`);
         console.log(`    ${utils_1.colors.bold}3) Custom${utils_1.colors.reset}             configure interactively now`);
-        console.log(`    ${utils_1.colors.bold}4) Skip${utils_1.colors.reset}               configure later via \`claudes config\`\n`);
+        console.log(`    ${utils_1.colors.bold}4) Skip${utils_1.colors.reset}               configure later via \`${selectedCommands[0]} config\`\n`);
         const presetChoice = await (0, utils_1.ask)("Choice [1]:");
         if (presetChoice === "" || presetChoice === "1") {
             const config = recommendedConfig();
@@ -256,7 +269,7 @@ async function install() {
             await (0, configure_1.configure)(["presets"]);
         }
         else if (presetChoice === "4") {
-            (0, utils_1.info)(`Skipped. Edit ${paths.configFile} or run: claudes config`);
+            (0, utils_1.info)(`Skipped. Edit ${paths.configFile} or run: ${selectedCommands[0]} config`);
         }
         else {
             (0, utils_1.warn)("Unknown choice — keeping built-in defaults.");
@@ -265,8 +278,13 @@ async function install() {
     (0, utils_1.step)("Step 4/4 — Finishing up");
     if (installUx) {
         const fileConfig = node_fs_1.default.existsSync(paths.configFile) ? (0, config_1.readFileConfig)() : {};
-        (0, config_1.writeFileConfig)(mergeUx(fileConfig, uxOrder, uxDefault, uxRemap));
+        (0, config_1.writeFileConfig)(mergeUx(fileConfig, uxOrder, uxDefault, uxRemap, selectedCommands));
         (0, utils_1.ok)(`UX settings merged into ${paths.configFile}`);
+    }
+    else {
+        const fileConfig = node_fs_1.default.existsSync(paths.configFile) ? (0, config_1.readFileConfig)() : {};
+        (0, config_1.writeFileConfig)(mergeUx(fileConfig, [], uxDefault, uxRemap, selectedCommands));
+        (0, utils_1.ok)(`Shell command settings merged into ${paths.configFile}`);
     }
     if (node_fs_1.default.existsSync(paths.configFile)) {
         (0, config_1.writeCache)((0, config_1.loadRuntimeConfig)());
@@ -274,9 +292,9 @@ async function install() {
     }
     console.log(`\n${utils_1.colors.green}${utils_1.colors.bold}  Done!${utils_1.colors.reset}\n`);
     console.log(`  Restart shell or:  ${utils_1.colors.dim}exec zsh${utils_1.colors.reset}`);
-    console.log(`  Open picker:       ${utils_1.colors.dim}claudes${utils_1.colors.reset}${installUx && uxRemap !== "none" ? ` ${utils_1.colors.dim}(or: claude)${utils_1.colors.reset}` : ""}`);
-    console.log(`  List presets:      ${utils_1.colors.dim}claudes list${utils_1.colors.reset}`);
-    console.log(`  Manage presets:    ${utils_1.colors.dim}claudes config${utils_1.colors.reset}`);
+    console.log(`  Open picker:       ${utils_1.colors.dim}${selectedCommands.join(" / ")}${utils_1.colors.reset}`);
+    console.log(`  List presets:      ${utils_1.colors.dim}${selectedCommands[0]} list${utils_1.colors.reset}`);
+    console.log(`  Manage presets:    ${utils_1.colors.dim}${selectedCommands[0]} config${utils_1.colors.reset}`);
     console.log(`  Config file:       ${utils_1.colors.dim}${paths.configFile}${utils_1.colors.reset}\n`);
     return 0;
 }

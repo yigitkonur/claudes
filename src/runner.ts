@@ -35,20 +35,23 @@ export function printPresets(config = loadRuntimeConfig()): void {
 }
 
 export function printHelp(): void {
-  console.log(`claudes — Claude Code preset picker
+  console.log(`claude-presets / claudes — Claude Code preset picker
 
 USAGE
+  claude-presets install        Install shell integration
   claudes                       Interactive picker
   claudes <preset> [args...]    Run a specific preset
   claudes list                  List all presets
   claudes show <preset>         Show resolved config for a preset
   claudes config [presets|ux]   Interactive preset & UX manager
-  claudes install               Install shell integration
   claudes test                  Run self tests
   claudes help                  Show this help
 
 EXAMPLES
+  npx claude-presets install
   claudes
+  ccp list
+  claude-preset show standard
   claudes standard
   claudes s "fix the bug"
   claudes plan --resume
@@ -186,6 +189,10 @@ export function positionName(index: number): string | null {
 
 export function remapMode(): string {
   return loadRuntimeConfig().ux.remap;
+}
+
+export function shellCommands(): string[] {
+  return loadRuntimeConfig().ux.commands;
 }
 
 export function formatResult(label: string, pass: boolean): string {

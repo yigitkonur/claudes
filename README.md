@@ -1,6 +1,6 @@
 # claudes
 
-> one command, everything you need to swap between claude code configs. model, effort, permission mode, mcp servers, system prompts, env vars — all in a named preset. config lives in a single yaml file. v2 is a TypeScript CLI for `npx claudes`; the legacy zsh installer remains available.
+> one command, everything you need to swap between claude code configs. model, effort, permission mode, mcp servers, system prompts, env vars — all in a named preset. config lives in a single yaml file. v2 is a TypeScript CLI for `npx claude-presets`; the legacy zsh installer remains available.
 
 [![shell](https://img.shields.io/badge/shell-zsh-89e051?style=flat-square)](https://www.zsh.org/)
 [![claude code](https://img.shields.io/badge/claude_code-compatible-f97316?style=flat-square)](https://claude.com/claude-code)
@@ -77,10 +77,14 @@ you want sonnet-fast for mechanical edits, opus-deep for architecture, plan mode
 v2 TypeScript installer:
 
 ```bash
-npx claudes install
+npx claude-presets install
 ```
 
-the npm name `claudes` must be owned by this project before that command can be published. until then, test v2 from a clone:
+until the npm package is published, test v2 from GitHub or a clone:
+
+```bash
+npx --yes github:yigitkonur/claudes install
+```
 
 ```bash
 git clone https://github.com/yigitkonur/claudes.git
@@ -106,7 +110,7 @@ cd claudes && ./install.sh
 both installers are interactive — they'll ask you four things:
 
 1. **core install** — installs the runtime, symlinks into `~/.zshrc.d/` or appends to `.zshrc`
-2. **enhanced ux** — optional: single-key picker, `claude` → `claudes` remap, `enter = default` preset, `claude1..4` shortcuts (see [enhanced ux](#enhanced-ux--single-key-picker))
+2. **commands + enhanced ux** — choose shell commands (`claude`, `claudes`, `ccp`, `claude-preset`), then optional single-key picker, `enter = default` preset, `claude1..9` shortcuts (see [enhanced ux](#enhanced-ux--single-key-picker))
 3. **preset scheme** — pick the recommended 4-slot scheme, keep built-in defaults, configure custom interactively, or skip
 4. **finishing up** — writes config files and warms the runtime cache
 
@@ -118,6 +122,9 @@ re-running is safe. nothing gets overwritten without asking.
 
 ```bash
 claudes                   # numbered picker — pick with enter
+ccp                       # same, if selected during install
+claude-preset             # same, if selected during install
+claude                    # same, if selected; presets still launch the real claude binary
 claudes standard          # launch directly by preset name
 claudes s                 # same, via alias
 claudes plan --resume     # preset + pass extra flags through to claude
@@ -125,7 +132,7 @@ claudes list              # show all presets with markers
 claudes show research     # dry-run: print resolved flags without launching
 claudes config            # interactive preset & ux manager
 claudes config presets    # manage presets only
-claudes config ux         # order, default preset, remap settings
+claudes config ux         # order, default preset, shell commands
 claudes test              # run self-tests
 claudes help              # full help
 ```
@@ -213,7 +220,7 @@ prompt: "You are in read-only review mode. Do not edit files."
 
 ## custom presets — how to add your own
 
-edit `~/.config/claudes/claudes.yaml`. one file for everything — presets, picker order, default, remap.
+edit `~/.config/claudes/claudes.yaml`. one file for everything — presets, picker order, default, and shell commands.
 
 a minimum viable preset:
 
@@ -319,7 +326,7 @@ install the ux layer for a faster daily workflow. the installer asks about this 
 ```bash
 # already ran the installer — just answer Y when it asks about enhanced ux
 # manual install:
-npx claudes install
+npx claude-presets install
 ```
 
 what it adds:
@@ -334,7 +341,7 @@ claude1   # → 1st preset in your order
 claude3   # → 3rd preset
 ```
 
-**`claude` → `claudes` remap** — typing `claude` opens the preset picker instead of the raw cli. configurable: warp-only (recommended), all terminals, or disabled.
+**command aliases** — during install, choose any combination of `claude`, `claudes`, `ccp`, and `claude-preset`. choosing `claude` intentionally shadows the raw CLI in your shell so the picker opens first; when you launch a preset, the runtime still resolves and executes the real `claude` binary.
 
 configure all of this interactively:
 
@@ -349,6 +356,7 @@ ux:
   order: [plan, max, standard, quick]
   default: standard
   remap: warp  # warp | all | none
+  commands: [claude, claudes, ccp, claude-preset]
 ```
 
 ---
@@ -426,7 +434,7 @@ because cli flags win, a preset overrides your `settings.json` baseline without 
 | `claudes show <preset>` | dry-run: print resolved config |
 | `claudes config` | interactive preset & ux manager |
 | `claudes config presets` | manage presets (add/edit/remove) |
-| `claudes config ux` | set order, default preset, remap |
+| `claudes config ux` | set order, default preset, shell commands |
 | `claudes install` | install shell integration from the npm package |
 | `claudes test` | run TypeScript self-tests |
 | `claudes help` | full help text |
@@ -446,7 +454,7 @@ because cli flags win, a preset overrides your `settings.json` baseline without 
 |---|---|
 | `~/.local/share/claudes/v2/dist/cli.js` | TypeScript runtime compiled to Node.js |
 | `~/.local/share/claudes/v2/claudes.zsh` | zsh shim that calls the Node runtime |
-| `~/.local/share/claudes/v2/ux.zsh` | optional ux layer for `claude1..9` and remap |
+| `~/.local/share/claudes/v2/ux.zsh` | optional ux layer for `claude1..9` |
 | `~/.config/claudes/claudes.yaml` | **your config** — presets + ux settings |
 | `~/.config/claudes/.claudes-cache.json` | generated cache |
 | `~/.config/claudes/mcp/` | convention: mcp json files for `mcp:` preset key |

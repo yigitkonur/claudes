@@ -49,6 +49,10 @@ async function main() {
         console.log((0, runner_1.remapMode)());
         return 0;
     }
+    if (command === "__commands") {
+        console.log((0, runner_1.shellCommands)().join(" "));
+        return 0;
+    }
     if (command === "__pos-name") {
         const name = (0, runner_1.positionName)(Number(rest[0]));
         if (name)

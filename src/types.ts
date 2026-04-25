@@ -14,6 +14,7 @@ export interface FileConfig {
     order?: string[];
     default?: string;
     remap?: RemapMode;
+    commands?: string[];
   };
   presets?: Record<string, PresetConfig>;
   remove_builtins?: string[];
@@ -38,6 +39,7 @@ export interface RuntimeConfig {
     order: string[];
     default: string;
     remap: RemapMode;
+    commands: string[];
   };
 }
 
